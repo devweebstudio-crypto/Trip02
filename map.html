@@ -35,7 +35,7 @@
       main{grid-template-columns:1fr}
       aside{position:fixed;right:0;bottom:0;left:0;max-height:45vh;border-left:none;border-top:1px solid rgba(255,255,255,.06)}
     }
-    /* HUD — bottom-left, mobile-first */
+    /* HUD — bottom-left */
     .hud{position:fixed;left:10px;bottom:10px;max-width:92vw;background:#0b1220;border:1px solid #243047;border-radius:14px;padding:8px 10px;z-index:5000;box-shadow:0 6px 20px rgba(0,0,0,.35)}
     .hud-header{display:flex;align-items:center;justify-content:space-between;gap:8px}
     .hud-title{margin:0;font-size:13px;color:#cbd5e1;font-weight:600}
@@ -46,7 +46,7 @@
     .chip a{color:#93c5fd;text-decoration:none;font-weight:600}
     @media (max-width:900px){ .hud{max-height:50vh} }
 
-    /* Diagnostics drawer (bottom-right) */
+    /* Diagnostics — bottom-right */
     .diag{position:fixed;right:10px;bottom:10px;max-width:92vw;min-width:260px;background:#0b1220;border:1px solid #243047;border-radius:14px;padding:8px 10px;z-index:5000;box-shadow:0 6px 20px rgba(0,0,0,.35)}
     .diag h4{margin:0 0 6px 0;font-size:13px;color:#cbd5e1}
     .kv{font-size:12px;color:#cbd5e1}
@@ -100,6 +100,7 @@
     <h4>Diagnostics</h4>
     <div class="kv"><span class="k">Secure:</span> <span id="dSecure">—</span></div>
     <div class="kv"><span class="k">Geo perm:</span> <span id="dPerm">—</span></div>
+    <div class="kv"><span class="k">Origin:</span> <span id="dOrigin">—</span> <span id="dCache" class="badge"></span></div>
     <div class="kv"><span class="k">UID:</span> <span id="dUid">—</span></div>
     <div class="kv"><span class="k">Trip:</span> <span id="dTrip">—</span></div>
     <div class="kv"><span class="k">Member/Admin:</span> <span id="dMember">—</span> / <span id="dAdmin">—</span></div>
@@ -151,14 +152,16 @@
 
     // Diagnostics refs
     const dSecure = document.getElementById("dSecure");
-    const dPerm = document.getElementById("dPerm");
-    const dUid = document.getElementById("dUid");
-    const dTrip = document.getElementById("dTrip");
+    const dPerm   = document.getElementById("dPerm");
+    const dOrigin = document.getElementById("dOrigin");
+    const dCache  = document.getElementById("dCache");
+    const dUid    = document.getElementById("dUid");
+    const dTrip   = document.getElementById("dTrip");
     const dMember = document.getElementById("dMember");
-    const dAdmin = document.getElementById("dAdmin");
-    const dGps = document.getElementById("dGps");
-    const dWrite = document.getElementById("dWrite");
-    const dLive = document.getElementById("dLive");
+    const dAdmin  = document.getElementById("dAdmin");
+    const dGps    = document.getElementById("dGps");
+    const dWrite  = document.getElementById("dWrite");
+    const dLive   = document.getElementById("dLive");
     const btnTestGps = document.getElementById("btnTestGps");
     const btnForcePrompt = document.getElementById("btnForcePrompt");
 
@@ -203,22 +206,13 @@
     // ===== Helpers =====
     function haversineKm(lat1,lng1,lat2,lng2){
       const R=6371, toRad=(d)=>d*Math.PI/180;
-      const dLat=toRad(lat2-lat1), dLng=toRad(lat2-lng1);
+      const dLat=toRad(lat2-lat1), dLng=toRad(lng2-lng1);
       const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
       return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
     }
-    function formatAgo(ts){
-      const s=Math.floor((Date.now()-ts)/1000);
-      if(s<60) return s+"s ago";
-      const m=Math.floor(s/60); if(m<60) return m+"m ago";
-      const h=Math.floor(m/60); return h+"h ago";
-    }
+    function formatAgo(ts){ const s=Math.floor((Date.now()-ts)/1000); if(s<60) return s+"s ago"; const m=Math.floor(s/60); if(m<60) return m+"m ago"; const h=Math.floor(m/60); return h+"h ago"; }
     function isSecureContext(){ return location.protocol === "https:" || ["localhost","127.0.0.1","0.0.0.0"].includes(location.hostname); }
-    async function checkGeoPermission(){
-      if (!navigator.permissions || !navigator.permissions.query) return null;
-      try { const st = await navigator.permissions.query({ name: "geolocation" }); return st.state; }
-      catch { return null; }
-    }
+    async function checkGeoPermission(){ if (!navigator.permissions?.query) return null; try { const st = await navigator.permissions.query({ name: "geolocation" }); return st.state; } catch { return null; } }
     function requestOneShotCenter(){
       if (!isSecureContext()){ setMsg("GPS needs HTTPS or http://localhost", true); return; }
       navigator.geolocation.getCurrentPosition(
@@ -228,7 +222,6 @@
       );
     }
 
-    // ===== UI render =====
     function renderMembersList(){
       const my = memberInfo.get(me.uid);
       membersList.innerHTML="";
@@ -353,7 +346,7 @@
       });
     }
 
-    // ===== Tracks (optional recent lines) =====
+    // ===== Tracks (recent) =====
     function dayKey(ts=Date.now()){
       const d=new Date(ts); const yyyy=d.getFullYear(); const mm=String(d.getMonth()+1).padStart(2,"0"); const dd=String(d.getDate()).padStart(2,"0");
       return `${yyyy}-${mm}-${dd}`;
@@ -481,12 +474,32 @@
       hudToggle.setAttribute("aria-expanded", open ? "false" : "true");
     });
 
-    // Diagnostics buttons
-    btnTestGps.onclick = requestOneShotCenter;
-    btnForcePrompt.onclick = requestOneShotCenter;
+    // Permission monitor — auto-start when granted on HTTPS
+    async function monitorPermAndMaybeStart() {
+      const state = await checkGeoPermission();
+      dPerm.textContent = state || "unknown";
+      const secure = isSecureContext();
+      dSecure.textContent = secure ? "yes" : "NO";
+
+      if (secure && state === "granted" && !shareToggle.checked) {
+        shareToggle.checked = true;
+        startSharing();
+      } else if (secure && state === "prompt") {
+        setMsg("Tap 'Enable Location' to allow GPS.");
+      } else if (state === "denied") {
+        setMsg("Location is blocked. Lock icon → Site settings → Location: Allow → reload.", true);
+      }
+    }
 
     // ===== Boot =====
     (async ()=>{
+      // Show origin + HTTPS hint
+      dOrigin.textContent = `${location.protocol}//${location.host}${location.pathname}`;
+      if (location.protocol !== "https:" && !["localhost","127.0.0.1","0.0.0.0"].includes(location.hostname)) {
+        dCache.textContent = "NOT HTTPS";
+        dCache.style.color = "#fecaca";
+      }
+
       dSecure.textContent = isSecureContext() ? "yes" : "NO";
       checkGeoPermission().then(state=>{ dPerm.textContent = state || "unknown"; });
 
@@ -496,14 +509,11 @@
       const unsubLive = attachLiveListener();
       await loadRecentTracks();
 
-      // Soft prompt
-      checkGeoPermission().then(state=>{
-        dPerm.textContent = state || "unknown";
-        if(state === "prompt"){ requestOneShotCenter(); }
-        if(state === "denied"){ setMsg("Location permission is blocked. Use the lock icon → Site settings → Allow, then reload.", true); }
-      });
+      // Monitor permission every 3s (some browsers update live)
+      monitorPermAndMaybeStart();
+      const permTimer = setInterval(monitorPermAndMaybeStart, 3000);
 
-      // Fallback one-shot (helps on iOS)
+      // Fallback one-shot to center (also triggers prompt on some browsers)
       if(navigator.geolocation){
         navigator.geolocation.getCurrentPosition(p=>{
           map.setView([p.coords.latitude, p.coords.longitude], 14);
@@ -511,7 +521,15 @@
         }, ()=>{}, { enableHighAccuracy:true, maximumAge:10000, timeout:8000 });
       }
 
-      window.addEventListener("beforeunload", ()=>{ stopSharing(); if(unsubLive) unsubLive(); });
+      // Diagnostics buttons
+      btnTestGps.onclick = requestOneShotCenter;
+      btnForcePrompt.onclick = requestOneShotCenter;
+
+      window.addEventListener("beforeunload", ()=>{
+        stopSharing();
+        if(unsubLive) unsubLive();
+        clearInterval(permTimer);
+      });
     })();
   </script>
 </body>
