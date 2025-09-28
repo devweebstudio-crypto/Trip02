@@ -9,16 +9,15 @@
     :root{--bg:#0f172a;--card:#111827;--muted:#94a3b8;--accent:#22c55e}
     *{box-sizing:border-box}
     body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;background:var(--bg);color:#e5e7eb}
-    header{padding:10px 12px;background:var(--card);display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.06)}
-    header .left{display:flex;align-items:center;gap:10px}
+    header{padding:12px 16px;background:var(--card);display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.06)}
+    header .left{display:flex;align-items:center;gap:8px}
     header .trip{font-weight:700}
-    header .code{font-size:12px;background:#0b1220;border:1px solid #25304a;padding:3px 8px;border-radius:8px}
-    header .muted{color:var(--muted);font-size:12px}
-    header .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    button{padding:8px 10px;border-radius:10px;border:1px solid #374151;background:#1f2937;color:#e5e7eb;cursor:pointer;font-size:14px}
+    header .muted{color:var(--muted);font-size:13px}
+    header .actions{display:flex;gap:8px;flex-wrap:wrap}
+    button{padding:9px 12px;border-radius:10px;border:1px solid #374151;background:#1f2937;color:#e5e7eb;cursor:pointer;font-size:14px}
     .btn.primary{background:var(--accent);color:#052e16;border:none}
     .btn.danger{background:#ef4444;color:#2f0b0b;border:none}
-    main{height:calc(100vh - 52px);display:grid;grid-template-columns:1fr 320px}
+    main{height:calc(100vh - 56px);display:grid;grid-template-columns:1fr 320px}
     #map{width:100%;height:100%}
     aside{border-left:1px solid rgba(255,255,255,.06);background:#0b1220;display:flex;flex-direction:column}
     .panel{padding:12px;overflow:auto}
@@ -29,22 +28,23 @@
     .member{padding:10px;border:1px solid #2d3748;border-radius:10px;margin-bottom:8px;background:#0b1020}
     .member .name{font-weight:700}
     .member .sub{font-size:12px;color:var(--muted)}
+    .member .sub a{color:#93c5fd;text-decoration:none;font-weight:600}
     .msg{font-size:13px;margin-top:8px;min-height:18px}
     .err{color:#fecaca}
-    /* Mobile HUD box (improved) */
+    @media (max-width:900px){
+      main{grid-template-columns:1fr}
+      aside{position:fixed;right:0;bottom:0;left:0;max-height:45vh;border-left:none;border-top:1px solid rgba(255,255,255,.06)}
+    }
+    /* HUD — bottom-left, mobile-first */
     .hud{position:fixed;left:10px;bottom:10px;max-width:92vw;background:#0b1220;border:1px solid #243047;border-radius:14px;padding:8px 10px;z-index:5000;box-shadow:0 6px 20px rgba(0,0,0,.35)}
     .hud-header{display:flex;align-items:center;justify-content:space-between;gap:8px}
     .hud-title{margin:0;font-size:13px;color:#cbd5e1;font-weight:600}
-    .hud-toggle{background:#0f1a32;border:1px solid #2a3e65;border-radius:8px;padding:4px 8px;font-size:12px}
+    .hud-toggle{background:#0f1a32;border:1px solid #2a3e65;border-radius:8px;padding:4px 8px;font-size:12px;color:#dbeafe}
     .hud-list{display:flex;gap:8px;flex-wrap:wrap;max-height:36vh;overflow:auto;margin-top:8px}
     .chip{font-size:13px;border:1px solid #2b3b5a;border-radius:999px;padding:7px 10px;display:flex;gap:8px;align-items:center;background:#101a2f}
     .chip .dot{width:9px;height:9px;border-radius:50%}
     .chip a{color:#93c5fd;text-decoration:none;font-weight:600}
-    @media (max-width:900px){
-      main{grid-template-columns:1fr}
-      aside{display:none}
-      .hud{max-height:50vh}
-    }
+    @media (max-width:900px){ .hud{max-height:50vh} }
   </style>
 </head>
 <body>
@@ -53,12 +53,10 @@
       <button id="backBtn">← Back</button>
       <div>
         <div class="trip" id="tripName">Trip</div>
-        <div class="muted"><span id="tripStatus">Active</span></div>
+        <div class="muted" id="tripMeta"></div>
       </div>
-      <div class="code" id="tripCode">CODE: —</div>
     </div>
     <div class="actions">
-      <button id="destBtn" class="btn">Set destination</button>
       <button id="locBtn" class="btn">Enable Location</button>
       <div class="switch">
         <input type="checkbox" id="shareToggle"/>
@@ -82,7 +80,7 @@
   <!-- HUD -->
   <div class="hud" id="hud">
     <div class="hud-header">
-      <h4 class="hud-title">Live members (distance from you)</h4>
+      <h4 class="hud-title">Members • distance from you</h4>
       <button id="hudToggle" class="hud-toggle" aria-expanded="true">Hide</button>
     </div>
     <div id="hudList" class="hud-list"></div>
@@ -116,12 +114,10 @@
     // ===== UI refs =====
     const backBtn = document.getElementById("backBtn");
     const tripNameEl = document.getElementById("tripName");
-    const tripStatusEl = document.getElementById("tripStatus");
-    const tripCodeEl = document.getElementById("tripCode");
-    const destBtn = document.getElementById("destBtn");
-    const locBtn = document.getElementById("locBtn");
+    const tripMetaEl = document.getElementById("tripMeta");
     const shareToggle = document.getElementById("shareToggle");
     const endTripBtn = document.getElementById("endTripBtn");
+    const locBtn = document.getElementById("locBtn");
     const membersList = document.getElementById("membersList");
     const msgEl = document.getElementById("msg");
     const hud = document.getElementById("hud");
@@ -131,7 +127,7 @@
     function setMsg(txt, isErr=false){ msgEl.textContent = txt; msgEl.className = "msg"+(isErr?" err":""); }
 
     // ===== Guard: require full login context =====
-    let me=null, profile=null, isAdmin=false, isMember=false;
+    let me=null, emailHash=null, profile=null, isAdmin=false, isMember=false, isTripActive=true;
     async function ensureLoggedIn(){
       return new Promise((resolve)=>{
         auth.onAuthStateChanged(async (u)=>{
@@ -140,7 +136,8 @@
           try{
             const link = await db.collection("authLinks").doc(u.uid).get();
             if(!link.exists || !link.data().emailHash){ location.replace("index.html?next="+encodeURIComponent(location.pathname+location.search)); return; }
-            const prof = await db.collection("profiles").doc(link.data().emailHash).get();
+            emailHash = link.data().emailHash;
+            const prof = await db.collection("profiles").doc(emailHash).get();
             if(!prof.exists){ location.replace("index.html?next="+encodeURIComponent(location.pathname+location.search)); return; }
             profile = prof.data();
             resolve();
@@ -156,7 +153,7 @@
     // My state
     let watchId = null;
     let myMarker = null;
-    let myPolyline = L.polyline([], {opacity:0.95}).addTo(map);
+    let myPolyline = L.polyline([], {opacity:0.9}).addTo(map);
     let lastTrackTs = 0;
 
     // Others
@@ -164,12 +161,6 @@
     const memberPolylines = new Map(); // uid -> polyline
     const memberInfo = new Map();      // uid -> {name, phone, lastSeen, lat, lng}
 
-    // Destination
-    let destMarker = null;
-    let masterLine = null;
-    let isTripActive = true;
-
-    // ===== Helpers =====
     function haversineKm(lat1,lng1,lat2,lng2){
       const R=6371, toRad=(d)=>d*Math.PI/180;
       const dLat=toRad(lat2-lat1), dLng=toRad(lng2-lng1);
@@ -194,13 +185,13 @@
       if (!isSecureContext()){ setMsg("GPS needs HTTPS or http://localhost", true); return; }
       navigator.geolocation.getCurrentPosition(
         p => { map.setView([p.coords.latitude, p.coords.longitude], 14); setMsg("Location enabled."); },
-        err => { setMsg("Location blocked. Use site settings to Allow, then reload.", true); console.error(err); },
+        err => { setMsg("Location blocked. Allow in site settings, then reload.", true); console.error(err); },
         { enableHighAccuracy:true, maximumAge:0, timeout:12000 }
       );
     }
 
     // ===== UI render =====
-    function renderSideList(){
+    function renderMembersList(){
       const my = memberInfo.get(me.uid);
       membersList.innerHTML="";
       const entries = Array.from(memberInfo.entries()).sort((a,b)=> (a[1].name||"").localeCompare(b[1].name||""));
@@ -211,12 +202,12 @@
           const d = haversineKm(my.lat, my.lng, info.lat, info.lng);
           distTxt = d<1 ? (d*1000).toFixed(0)+" m" : d.toFixed(2)+" km";
         }
-        const phoneHtml = info.phone ? ` • <a href="tel:${info.phone}" style="color:#93c5fd;text-decoration:none">Call</a>` : "";
+        const tel = info.phone ? ` • <a href="tel:${info.phone}">Call</a>` : "";
         const card = document.createElement("div");
         card.className="member";
         card.innerHTML = `
           <div class="name">${info.name||"Anon"} ${isMe?'<span class="muted">(you)</span>':''}</div>
-          <div class="sub">${info.lat!=null?('Last seen '+formatAgo(info.lastSeen||Date.now())):'No signal'} • Distance: ${distTxt}${phoneHtml}</div>
+          <div class="sub">${info.lat!=null?('Last seen '+formatAgo(info.lastSeen||Date.now())):'No signal'} • Distance: ${distTxt}${tel}</div>
         `;
         membersList.appendChild(card);
       }
@@ -249,7 +240,7 @@
         hudList.appendChild(chip);
       }
     }
-    function renderLists(){ renderSideList(); renderHud(); }
+    function renderLists(){ renderMembersList(); renderHud(); }
 
     function upsertMemberMarker(uid, lat, lng, isMe=false){
       let m = memberMarkers.get(uid);
@@ -263,17 +254,16 @@
       else { pl.setLatLngs(pts); }
     }
 
-    // ===== Load trip & members (names + phone) =====
-    let tripRef;
+    // ===== Load trip basics and membership =====
     async function loadTrip(){
       if(!tripId){ alert("Missing tripId"); location.replace("trips.html"); return; }
-      tripRef = db.collection("trips").doc(tripId);
+      const tripRef = db.collection("trips").doc(tripId);
       const [tripSnap, memberSnap] = await Promise.all([ tripRef.get(), tripRef.collection("members").get() ]);
       if(!tripSnap.exists){ alert("Trip not found"); location.replace("trips.html"); return; }
+
       const t = tripSnap.data();
       tripNameEl.textContent = t.name || "Trip";
-      tripStatusEl.textContent = t.isActive===false ? "Ended" : "Active";
-      tripCodeEl.textContent = "CODE: " + (t.joinCodePlain || "—");
+      tripMetaEl.textContent = (t.isActive===false ? "Ended" : "Active");
       isTripActive = t.isActive !== false;
 
       // membership/admin
@@ -282,17 +272,15 @@
       const myDoc = memberSnap.docs.find(d=> d.id===me.uid);
       isAdmin = myDoc && myDoc.data().role === "admin";
       endTripBtn.style.display = isAdmin ? "inline-block" : "none";
-      destBtn.style.display = isAdmin ? "inline-block" : "none";
 
-      // seed names/phones
+      // seed names & phones for HUD / list
       for(const d of memberSnap.docs){
         const m = d.data();
-        memberInfo.set(d.id, { name: m.displayName || "Anon", phone: m.phone || "", lastSeen: null, lat: null, lng: null });
-      }
-
-      // destination render if present
-      if (t.destination && typeof t.destination.lat === "number" && typeof t.destination.lng === "number") {
-        setDestinationOnMap(t.destination);
+        memberInfo.set(d.id, {
+          name: m.displayName || "Anon",
+          phone: m.phone || "",
+          lastSeen: null, lat: null, lng: null
+        });
       }
 
       map.setView([20.5937, 78.9629], 5); // India fallback
@@ -300,8 +288,8 @@
 
     // ===== Live positions listener =====
     function attachLiveListener(){
-      return tripRef.collection("live").onSnapshot(snap=>{
-        let toFit = [];
+      return db.collection("trips").doc(tripId).collection("live").onSnapshot(snap=>{
+        let bounds = [];
         snap.docChanges().forEach(ch=>{
           const uid = ch.doc.id;
           const data = ch.doc.data() || {};
@@ -310,31 +298,30 @@
           info.lat = data.lat; info.lng = data.lng; info.lastSeen = data.ts || Date.now();
           memberInfo.set(uid, info);
           upsertMemberMarker(uid, data.lat, data.lng, uid===me.uid);
-          toFit.push([data.lat, data.lng]);
+          bounds.push([data.lat, data.lng]);
         });
         renderLists();
-        if(toFit.length && map.getZoom() < 6){
-          const b = L.latLngBounds(toFit);
+        if(bounds.length && map.getZoom() < 6){
+          const b = L.latLngBounds(bounds);
           map.fitBounds(b.pad(0.3));
         }
-        updateMasterLine();
       }, err=>{
         console.error(err);
         setMsg("Live listener error: "+(err&&err.message||err), true);
       });
     }
 
-    // ===== Tracks (recent) =====
+    // ===== Tracks (optional, recent) =====
     function dayKey(ts=Date.now()){
       const d=new Date(ts); const yyyy=d.getFullYear(); const mm=String(d.getMonth()+1).padStart(2,"0"); const dd=String(d.getDate()).padStart(2,"0");
       return `${yyyy}-${mm}-${dd}`;
     }
     async function loadRecentTracks(){
       const today = dayKey();
-      const mSnap = await tripRef.collection("members").get();
+      const mSnap = await db.collection("trips").doc(tripId).collection("members").get();
       for(const m of mSnap.docs){
         const uid = m.id;
-        const ptsSnap = await tripRef.collection("tracks").doc(uid).collection(today)
+        const ptsSnap = await db.collection("trips").doc(tripId).collection("tracks").doc(uid).collection(today)
           .orderBy("ts","desc").limit(300).get();
         const pts = ptsSnap.docs.map(d=> d.data()).reverse().map(p=> [p.lat, p.lng]);
         if(pts.length){ upsertMemberPolyline(uid, pts); }
@@ -343,7 +330,7 @@
 
     // ===== Geolocation sharing =====
     function canGeo(){
-      if (!("geolocation" in navigator)) { setMsg("Geolocation not supported", true); return false; }
+      if(!("geolocation" in navigator)) { setMsg("Geolocation not supported", true); return false; }
       if (!isSecureContext()) { setMsg("GPS needs HTTPS or http://localhost", true); return false; }
       if (!isTripActive) { setMsg("Trip is ended — sharing disabled", true); return false; }
       return true;
@@ -352,17 +339,17 @@
       if(!canGeo()) { shareToggle.checked=false; return; }
       setMsg("Sharing…");
       const opts = { enableHighAccuracy:true, maximumAge:0, timeout:20000 };
-      const liveRef = tripRef.collection("live").doc(me.uid);
-      const trackColl = tripRef.collection("tracks").doc(me.uid).collection(dayKey());
+      const liveRef = db.collection("trips").doc(tripId).collection("live").doc(me.uid);
+      const trackColl = db.collection("trips").doc(tripId).collection("tracks").doc(me.uid).collection(dayKey());
 
-      // offline queue
+      // offline queue for tracks
       const qKey = `trackQueue:${tripId}:${me.uid}`;
       const flushQueue = async ()=>{
         try{
           const raw = localStorage.getItem(qKey); if(!raw) return;
           const arr = JSON.parse(raw)||[]; if(!arr.length) return;
           const batch = db.batch();
-          arr.forEach(p=> batch.set(trackColl.doc(), p));
+          for(const p of arr){ batch.set(trackColl.doc(), p); }
           await batch.commit();
           localStorage.removeItem(qKey);
         }catch(e){ console.warn("Flush queue failed", e); }
@@ -374,7 +361,7 @@
         const { latitude:lat, longitude:lng, speed, heading, accuracy } = pos.coords;
         const ts = Date.now();
 
-        // write live
+        // write live (shows error on rules block)
         try{
           await liveRef.set({ lat, lng, ts, speed: speed||0, heading: heading||0, accuracy: accuracy||0 }, { merge:true });
           setMsg("Location updated");
@@ -389,9 +376,8 @@
         const info = memberInfo.get(me.uid) || { name: profile?.name || "Me", phone: profile?.phone || "" };
         memberInfo.set(me.uid, { ...info, lat, lng, lastSeen: ts });
         renderLists();
-        updateMasterLine();
 
-        // ~1/sec track point
+        // ~1/sec track point (queue when offline)
         if (ts - lastTrackTs >= 950){
           lastTrackTs = ts;
           const point = { lat, lng, ts };
@@ -418,48 +404,16 @@
     }
     function stopSharing(){ if(shareToggle._stop){ shareToggle._stop(); shareToggle._stop=null; } }
 
-    // ===== Destination (admin) =====
-    function setDestinationOnMap(dest){
-      if(destMarker){ map.removeLayer(destMarker); destMarker=null; }
-      if(masterLine){ map.removeLayer(masterLine); masterLine=null; }
-      destMarker = L.marker([dest.lat, dest.lng]).addTo(map).bindPopup("Destination: "+(dest.name||""));
-      updateMasterLine();
-    }
-    function updateMasterLine(){
-      if(!destMarker) return;
-      const meInfo = memberInfo.get(me.uid);
-      if(!meInfo || meInfo.lat==null) return;
-      const to = destMarker.getLatLng();
-      const from = L.latLng(meInfo.lat, meInfo.lng);
-      if(masterLine){ masterLine.setLatLngs([from, to]); }
-      else { masterLine = L.polyline([from, to], {opacity:0.7}).addTo(map); }
-    }
-    async function pickDestination(){
-      if(!isAdmin){ alert("Only admins can set destination"); return; }
-      alert("Click on the map to set destination point.");
-      const once = (e)=>{
-        map.off('click', once);
-        const lat = e.latlng.lat, lng = e.latlng.lng;
-        const name = prompt("Destination name?") || "Destination";
-        const dest = { name, lat, lng };
-        tripRef.update({ destination: dest })
-          .then(()=>{ setDestinationOnMap(dest); setMsg("Destination set"); })
-          .catch(err=> setMsg("Set destination failed: "+(err&&err.message||err), true));
-      };
-      map.on('click', once);
-    }
-
     // ===== End trip (admin) =====
     async function endTrip(){
       if(!confirm("End this trip for everyone?")) return;
       try{
-        await tripRef.update({ isActive:false, endedAt: firebase.firestore.FieldValue.serverTimestamp() });
-        tripStatusEl.textContent = "Ended";
+        await db.collection("trips").doc(tripId).update({ isActive:false, endedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        setMsg("Trip ended");
         endTripBtn.disabled = true;
         isTripActive = false;
         stopSharing();
         shareToggle.checked = false;
-        setMsg("Trip ended");
       }catch(e){
         setMsg("End trip failed: "+(e&&e.message||e), true);
       }
@@ -467,10 +421,9 @@
 
     // ===== Wire UI =====
     backBtn.onclick = ()=> history.length>1 ? history.back() : location.replace("trips.html");
-    destBtn.onclick = pickDestination;
-    locBtn.onclick = requestOneShotCenter;
     shareToggle.addEventListener("change", ()=>{ if(shareToggle.checked) startSharing(); else stopSharing(); });
     endTripBtn.addEventListener("click", endTrip);
+    locBtn.onclick = requestOneShotCenter;
 
     // HUD collapse/expand
     hudToggle.addEventListener("click", ()=>{
@@ -488,7 +441,7 @@
       const unsubLive = attachLiveListener();
       await loadRecentTracks();
 
-      // Permission hint & one-shot prompt on first load (mobile friendly)
+      // Permission hint & one-shot prompt (mobile-friendly)
       checkGeoPermission().then(state=>{
         if(state === "denied"){
           setMsg("Location permission is blocked. Tap 'Enable Location' and allow it in the prompt/site settings.", true);
@@ -497,7 +450,7 @@
         }
       });
 
-      // Fallback center to user's current position (also triggers prompt)
+      // Fallback center (also triggers prompt)
       if(navigator.geolocation){
         navigator.geolocation.getCurrentPosition(p=>{
           map.setView([p.coords.latitude, p.coords.longitude], 14);
