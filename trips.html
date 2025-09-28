@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Trips</title>
+  <style>
+    :root{--bg:#0f172a;--card:#111827;--muted:#94a3b8;--line:#374151;--accent:#22c55e}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;background:var(--bg);color:#e5e7eb}
+    header{padding:14px 20px;background:var(--card);display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.06)}
+    header .who{font-size:14px;color:var(--muted)}
+    header .actions{display:flex;gap:8px}
+    main{padding:20px;max-width:820px;margin:auto}
+    h2{margin:22px 0 8px;font-size:18px}
+    input,button{padding:10px 12px;border-radius:10px;border:1px solid var(--line);font-size:14px}
+    input{width:100%;background:#0b1220;color:#e5e7eb}
+    input:focus{outline:2px solid #3b82f6}
+    button{background:#1f2937;color:#e5e7eb;cursor:pointer}
+    .btn.primary{background:var(--accent);color:#052e16;border:none}
+    .btn.alt{background:#0b1220}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .list{margin-top:12px}
+    .trip{padding:12px;border:1px solid #2d3748;border-radius:12px;margin-bottom:10px;display:grid;grid-template-columns:1fr auto;gap:10px;background:#0b1220}
+    .muted{color:var(--muted)}
+    .msg{margin-top:12px;font-size:14px;min-height:20px}
+    .msg.ok{color:#86efac}.msg.err{color:#fecaca}
+    .guard{padding:60px 20px;text-align:center;color:var(--muted)}
+    /* modal */
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
+    .sheet{background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px;max-width:460px;width:100%}
+    #qr{background:#0b1220;padding:10px;border-radius:12px;margin:10px 0}
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <div style="font-weight:700">My Trips</div>
+      <div class="who" id="who"></div>
+    </div>
+    <div class="actions">
+      <button id="logoutBtn" class="btn alt">Sign out</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="guard" class="guard" style="display:none">Checking login…</div>
+
+    <section id="app" style="display:none">
+      <h2>Create Trip</h2>
+      <input id="tripName" placeholder="Trip name"/>
+      <div class="row">
+        <button id="createBtn" class="btn primary">Create Trip</button>
+        <button id="showLastInviteBtn" class="btn" title="Show last created invite">Show Last Invite</button>
+      </div>
+
+      <h2>Join Trip</h2>
+      <div class="row" style="width:100%">
+        <input id="joinCode" style="flex:1" placeholder="Enter join code"/>
+        <button id="joinBtn" class="btn">Join</button>
+      </div>
+
+      <div id="msg" class="msg"></div>
+
+      <h2>My Trips</h2>
+      <div id="tripsList" class="list"></div>
+      <div class="muted" id="emptyHint" style="display:none">No trips yet. Create one or join with a code.</div>
+    </section>
+  </main>
+
+  <!-- Invite Modal -->
+  <div id="inviteModal" class="modal">
+    <div class="sheet" onclick="event.stopPropagation()">
+      <h3>Share this code</h3>
+      <div class="muted">Anyone with this code can join (until you turn off joins).</div>
+      <div style="display:grid;place-items:center">
+        <div id="inviteCode" style="font-size:28px;font-weight:800;letter-spacing:2px;margin:8px 0"></div>
+        <div id="qr"></div>
+      </div>
+      <div class="row">
+        <button id="copyCodeBtn" class="btn">Copy Code</button>
+        <button id="closeInviteBtn" class="btn primary">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+  <script>
+    // ===== Firebase =====
+    const firebaseConfig = {
+      apiKey: "AIzaSyB529yOEmk9sDDcUiD5tkyCRsmJpvOn66s",
+      authDomain: "tripapp-27b4f.firebaseapp.com",
+      projectId: "tripapp-27b4f",
+      storageBucket: "tripapp-27b4f.firebasestorage.app",
+      messagingSenderId: "796205117191",
+      appId: "1:796205117191:web:30507cc680c3b630b51fa2",
+      measurementId: "G-E7R0VTP3TQ"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // ===== UI refs =====
+    const guardEl = document.getElementById("guard");
+    const appEl = document.getElementById("app");
+    const whoEl = document.getElementById("who");
+    const logoutBtn = document.getElementById("logoutBtn");
+
+    const tripNameEl = document.getElementById("tripName");
+    const createBtn = document.getElementById("createBtn");
+    const showLastInviteBtn = document.getElementById("showLastInviteBtn");
+    const joinCodeEl = document.getElementById("joinCode");
+    const joinBtn = document.getElementById("joinBtn");
+    const msgEl = document.getElementById("msg");
+    const tripsList = document.getElementById("tripsList");
+    const emptyHint = document.getElementById("emptyHint");
+
+    const inviteModal = document.getElementById("inviteModal");
+    const inviteCodeEl = document.getElementById("inviteCode");
+    const copyCodeBtn = document.getElementById("copyCodeBtn");
+    const closeInviteBtn = document.getElementById("closeInviteBtn");
+    const qrBox = document.getElementById("qr");
+    let lastInvite = null;
+
+    // ===== Helpers =====
+    function showMsg(txt, isErr=false){ msgEl.textContent=txt; msgEl.className="msg "+(isErr?"err":"ok"); }
+    async function sha256Hex(text){ const enc=new TextEncoder().encode(text); const buf=await crypto.subtle.digest("SHA-256",enc); return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join(""); }
+    function genJoinCode(len=6){ const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let s=""; for(let i=0;i<len;i++) s+=chars[Math.floor(Math.random()*chars.length)]; return s; }
+    function openInviteModal(code){
+      inviteCodeEl.textContent = code;
+      qrBox.innerHTML = "";
+      new QRCode(qrBox, { text: JSON.stringify({ type:"trip-invite", code }), width: 220, height: 220, colorDark:"#ef4444", colorLight:"#ffffff", correctLevel: QRCode.CorrectLevel.H });
+      inviteModal.style.display="flex";
+    }
+    inviteModal.addEventListener("click", (e)=>{ if(e.target===inviteModal) inviteModal.style.display="none"; });
+    closeInviteBtn.addEventListener("click", ()=> inviteModal.style.display="none");
+    copyCodeBtn.addEventListener("click", async ()=>{ try{ await navigator.clipboard.writeText(inviteCodeEl.textContent); showMsg("Code copied!"); }catch{ showMsg("Copy failed", true); }});
+
+    // ===== Strong access guard (no anonymous fallback) =====
+    // - If not signed in -> redirect to index.html
+    // - If signed in but no linked email/profile -> redirect to index.html to complete login
+    let currentUser = null, currentEmailHash = null, currentProfile = null;
+
+    async function ensureLoggedIn(){
+      return new Promise((resolve)=>{
+        guardEl.style.display="block"; appEl.style.display="none";
+        auth.onAuthStateChanged(async (u)=>{
+          if(!u){
+            // Not signed in at all -> go to login
+            location.replace("index.html?next=trips.html");
+            return;
+          }
+          try{
+            // Require an authLink (uid -> emailHash)
+            const link = await db.collection("authLinks").doc(u.uid).get();
+            if(!link.exists || !link.data().emailHash){
+              location.replace("index.html?next=trips.html");
+              return;
+            }
+            currentUser = u;
+            currentEmailHash = link.data().emailHash;
+
+            // Require a profile with a name (let user set it on index.html)
+            const prof = await db.collection("profiles").doc(currentEmailHash).get();
+            if(!prof.exists){
+              location.replace("index.html?next=trips.html");
+              return;
+            }
+            currentProfile = prof.data();
+            whoEl.textContent = (currentProfile.name || "User") + (currentProfile.email? ` • ${currentProfile.email}` : "");
+            guardEl.style.display="none";
+            appEl.style.display="block";
+            resolve();
+          }catch(e){
+            console.error(e);
+            alert("Auth check failed. Redirecting to login.");
+            location.replace("index.html?next=trips.html");
+          }
+        });
+      });
+    }
+
+    logoutBtn.onclick = async ()=>{
+      try { await auth.signOut(); } finally { location.replace("index.html"); }
+    };
+
+    // ===== My Trips via /userTrips index =====
+    async function fetchMyTripsFromIndex(uid){
+      const rows = [];
+      const idxSnap = await db.collection("userTrips").doc(uid).collection("trips").orderBy("joinedAt","desc").get();
+      for (const doc of idxSnap.docs){
+        const tripId = doc.id;
+        const [tSnap, mSnap] = await Promise.all([
+          db.collection("trips").doc(tripId).get(),
+          db.collection("trips").doc(tripId).collection("members").get()
+        ]);
+        if (!tSnap.exists) continue;
+        rows.push({
+          id: tripId,
+          data: tSnap.data(),
+          members: mSnap.docs.map(d=>({ id:d.id, ...d.data() })),
+          role: doc.data().role || "member"
+        });
+      }
+      return rows;
+    }
+
+    function renderTrips(rows){
+      tripsList.innerHTML = "";
+      if (!rows.length){ emptyHint.style.display="block"; return; }
+      emptyHint.style.display="none";
+
+      rows.forEach(t=>{
+        const names = t.members.map(m=>m.displayName||"Anon").join(", ");
+        const el = document.createElement("div");
+        el.className = "trip";
+        el.innerHTML = `
+          <div>
+            <div style="cursor:pointer;text-decoration:underline" data-open="${t.id}">
+              <b>${t.data.name || "Trip"}</b> <span class="muted">(${t.role})</span>
+            </div>
+            <div class="muted">Members: ${names || "—"}</div>
+          </div>
+          <div class="row">
+            <button class="btn" data-invite="${t.id}">Add Member</button>
+            <button class="btn primary" data-open="${t.id}">Open Map</button>
+          </div>`;
+        tripsList.appendChild(el);
+      });
+
+      document.querySelectorAll('[data-open]').forEach(b=>{
+        b.onclick = ()=> location.href = `map.html?tripId=${b.getAttribute('data-open')}`;
+      });
+      document.querySelectorAll('button[data-invite]').forEach(btn=>{
+        btn.onclick = ()=>{
+          const plain = prompt("Enter the current join code to generate QR (or cancel):");
+          if (!plain) return;
+          openInviteModal(plain.toUpperCase());
+        };
+      });
+    }
+
+    function attachRealtimeIndex(uid){
+      db.collection("userTrips").doc(uid).collection("trips")
+        .orderBy("joinedAt","desc")
+        .onSnapshot(async snap=>{
+          const rows = [];
+          for (const d of snap.docs){
+            const tripId = d.id;
+            const [tSnap, mSnap] = await Promise.all([
+              db.collection("trips").doc(tripId).get(),
+              db.collection("trips").doc(tripId).collection("members").get()
+            ]);
+            if(!tSnap.exists) continue;
+            rows.push({
+              id: tripId,
+              data: tSnap.data(),
+              members: mSnap.docs.map(x=>({ id:x.id, ...x.data() })),
+              role: d.data().role || "member"
+            });
+          }
+          renderTrips(rows);
+        }, err => {
+          showMsg("Realtime index error: "+(err && err.message || err), true);
+          console.error(err);
+        });
+    }
+
+    // ===== Create Trip =====
+    createBtn.addEventListener("click", async ()=>{
+      const name = tripNameEl.value.trim();
+      if(!name){ showMsg("Enter trip name", true); return; }
+      if(!currentUser){ showMsg("Not signed in", true); return; }
+
+      const displayName = (currentProfile && currentProfile.name) ? currentProfile.name : "Anon";
+      const joinCode = genJoinCode();
+      const joinCodeHash = await sha256Hex(joinCode);
+      const tripId = db.collection("trips").doc().id;
+
+      try{
+        // trip
+        await db.collection("trips").doc(tripId).set({
+          name, createdBy: currentUser.uid, isActive:true,
+          joinCodeHash, allowNewJoins:true,
+          memberUids:[currentUser.uid],
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        // public join index
+        await db.collection("joinCodes").doc(joinCodeHash).set({
+          tripId, isActive:true, allowNewJoins:true,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        // my membership
+        const memRef = db.collection("trips").doc(tripId).collection("members").doc(currentUser.uid);
+        await memRef.set({
+          uid: currentUser.uid,
+          role:"admin", displayName, shareEnabled:false,
+          joinedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          createdBy: currentUser.uid, codeHash: joinCodeHash
+        });
+        await memRef.update({codeHash: firebase.firestore.FieldValue.delete()});
+        // userTrips index
+        await db.collection("userTrips").doc(currentUser.uid).collection("trips").doc(tripId).set({
+          role: "admin",
+          joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        tripNameEl.value = "";
+        lastInvite = { code: joinCode, codeHash: joinCodeHash, tripId };
+        openInviteModal(joinCode);
+        showMsg("Trip created!");
+        // refresh list immediately
+        renderTrips(await fetchMyTripsFromIndex(currentUser.uid));
+
+      }catch(e){ console.error(e); showMsg("Error creating trip: "+e.message, true); }
+    });
+
+    document.getElementById("showLastInviteBtn").addEventListener("click", ()=>{
+      if(!lastInvite){ showMsg("No recent invite. Create a trip first.", true); return; }
+      openInviteModal(lastInvite.code);
+    });
+
+    // ===== Join by code =====
+    joinBtn.addEventListener("click", ()=> joinByCode(joinCodeEl.value));
+    async function joinByCode(plain){
+      const code=(plain||"").trim().toUpperCase(); if(!code){ showMsg("Enter join code", true); return; }
+      if(!currentUser){ showMsg("Not signed in", true); return; }
+
+      const displayName = (currentProfile && currentProfile.name) ? currentProfile.name : "Anon";
+
+      try{
+        const codeHash = await sha256Hex(code);
+        const j = await db.collection("joinCodes").doc(codeHash).get();
+        if(!j.exists || !j.data().isActive || !j.data().allowNewJoins){ showMsg("Invalid or closed code.", true); return; }
+        const tripId=j.data().tripId;
+
+        // create my member doc
+        const memRef = db.collection("trips").doc(tripId).collection("members").doc(currentUser.uid);
+        await memRef.set({
+          uid: currentUser.uid,
+          role:"member", displayName, shareEnabled:false,
+          joinedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          createdBy: currentUser.uid, codeHash: codeHash
+        });
+        await memRef.update({codeHash: firebase.firestore.FieldValue.delete()});
+        // add to userTrips index
+        await db.collection("userTrips").doc(currentUser.uid).collection("trips").doc(tripId).set({
+          role: "member",
+          joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        showMsg("Joined trip!");
+        joinCodeEl.value="";
+        renderTrips(await fetchMyTripsFromIndex(currentUser.uid));
+
+      }catch(e){ console.error(e); showMsg("Error joining trip: "+e.message, true); }
+    }
+
+    // ===== Boot =====
+    (async ()=>{
+      await ensureLoggedIn();         // redirects to index.html if not fully logged in
+      // initial paint + realtime
+      renderTrips(await fetchMyTripsFromIndex(currentUser.uid));
+      attachRealtimeIndex(currentUser.uid);
+    })();
+  </script>
+</body>
+</html>
