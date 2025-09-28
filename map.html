@@ -45,6 +45,15 @@
     .chip .dot{width:9px;height:9px;border-radius:50%}
     .chip a{color:#93c5fd;text-decoration:none;font-weight:600}
     @media (max-width:900px){ .hud{max-height:50vh} }
+
+    /* Diagnostics drawer (bottom-right) */
+    .diag{position:fixed;right:10px;bottom:10px;max-width:92vw;min-width:260px;background:#0b1220;border:1px solid #243047;border-radius:14px;padding:8px 10px;z-index:5000;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+    .diag h4{margin:0 0 6px 0;font-size:13px;color:#cbd5e1}
+    .kv{font-size:12px;color:#cbd5e1}
+    .kv .k{color:#94a3b8}
+    .diag .row{margin-top:6px}
+    .mini{font-size:12px}
+    .badge{display:inline-block;border:1px solid #334155;border-radius:8px;padding:2px 6px;margin-left:6px}
   </style>
 </head>
 <body>
@@ -86,6 +95,23 @@
     <div id="hudList" class="hud-list"></div>
   </div>
 
+  <!-- Diagnostics -->
+  <div class="diag" id="diag">
+    <h4>Diagnostics</h4>
+    <div class="kv"><span class="k">Secure:</span> <span id="dSecure">—</span></div>
+    <div class="kv"><span class="k">Geo perm:</span> <span id="dPerm">—</span></div>
+    <div class="kv"><span class="k">UID:</span> <span id="dUid">—</span></div>
+    <div class="kv"><span class="k">Trip:</span> <span id="dTrip">—</span></div>
+    <div class="kv"><span class="k">Member/Admin:</span> <span id="dMember">—</span> / <span id="dAdmin">—</span></div>
+    <div class="kv"><span class="k">Last GPS:</span> <span id="dGps">—</span></div>
+    <div class="kv"><span class="k">Live write:</span> <span id="dWrite">—</span></div>
+    <div class="kv"><span class="k">Live docs:</span> <span id="dLive">0</span></div>
+    <div class="row">
+      <button id="btnTestGps" class="btn mini">Test GPS</button>
+      <button id="btnForcePrompt" class="btn mini">Force Prompt</button>
+    </div>
+  </div>
+
   <!-- Leaflet -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <!-- Firebase -->
@@ -120,19 +146,32 @@
     const locBtn = document.getElementById("locBtn");
     const membersList = document.getElementById("membersList");
     const msgEl = document.getElementById("msg");
-    const hud = document.getElementById("hud");
     const hudToggle = document.getElementById("hudToggle");
     const hudList = document.getElementById("hudList");
+
+    // Diagnostics refs
+    const dSecure = document.getElementById("dSecure");
+    const dPerm = document.getElementById("dPerm");
+    const dUid = document.getElementById("dUid");
+    const dTrip = document.getElementById("dTrip");
+    const dMember = document.getElementById("dMember");
+    const dAdmin = document.getElementById("dAdmin");
+    const dGps = document.getElementById("dGps");
+    const dWrite = document.getElementById("dWrite");
+    const dLive = document.getElementById("dLive");
+    const btnTestGps = document.getElementById("btnTestGps");
+    const btnForcePrompt = document.getElementById("btnForcePrompt");
 
     function setMsg(txt, isErr=false){ msgEl.textContent = txt; msgEl.className = "msg"+(isErr?" err":""); }
 
     // ===== Guard: require full login context =====
     let me=null, emailHash=null, profile=null, isAdmin=false, isMember=false, isTripActive=true;
+
     async function ensureLoggedIn(){
       return new Promise((resolve)=>{
         auth.onAuthStateChanged(async (u)=>{
           if(!u){ location.replace("index.html?next="+encodeURIComponent(location.pathname+location.search)); return; }
-          me = u;
+          me = u; dUid.textContent = me.uid;
           try{
             const link = await db.collection("authLinks").doc(u.uid).get();
             if(!link.exists || !link.data().emailHash){ location.replace("index.html?next="+encodeURIComponent(location.pathname+location.search)); return; }
@@ -161,9 +200,10 @@
     const memberPolylines = new Map(); // uid -> polyline
     const memberInfo = new Map();      // uid -> {name, phone, lastSeen, lat, lng}
 
+    // ===== Helpers =====
     function haversineKm(lat1,lng1,lat2,lng2){
       const R=6371, toRad=(d)=>d*Math.PI/180;
-      const dLat=toRad(lat2-lat1), dLng=toRad(lng2-lng1);
+      const dLat=toRad(lat2-lat1), dLng=toRad(lat2-lng1);
       const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
       return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
     }
@@ -173,9 +213,7 @@
       const m=Math.floor(s/60); if(m<60) return m+"m ago";
       const h=Math.floor(m/60); return h+"h ago";
     }
-    function isSecureContext(){
-      return location.protocol === "https:" || ["localhost","127.0.0.1","0.0.0.0"].includes(location.hostname);
-    }
+    function isSecureContext(){ return location.protocol === "https:" || ["localhost","127.0.0.1","0.0.0.0"].includes(location.hostname); }
     async function checkGeoPermission(){
       if (!navigator.permissions || !navigator.permissions.query) return null;
       try { const st = await navigator.permissions.query({ name: "geolocation" }); return st.state; }
@@ -184,8 +222,8 @@
     function requestOneShotCenter(){
       if (!isSecureContext()){ setMsg("GPS needs HTTPS or http://localhost", true); return; }
       navigator.geolocation.getCurrentPosition(
-        p => { map.setView([p.coords.latitude, p.coords.longitude], 14); setMsg("Location enabled."); },
-        err => { setMsg("Location blocked. Allow in site settings, then reload.", true); console.error(err); },
+        p => { map.setView([p.coords.latitude, p.coords.longitude], 14); setMsg("Location enabled."); dGps.textContent = `${p.coords.latitude.toFixed(5)}, ${p.coords.longitude.toFixed(5)}`; },
+        err => { setMsg("Location blocked. Allow in site settings, then reload.", true); console.error(err); dGps.textContent = "ERROR: "+(err && err.message || err); },
         { enableHighAccuracy:true, maximumAge:0, timeout:12000 }
       );
     }
@@ -257,6 +295,7 @@
     // ===== Load trip basics and membership =====
     async function loadTrip(){
       if(!tripId){ alert("Missing tripId"); location.replace("trips.html"); return; }
+      dTrip.textContent = tripId;
       const tripRef = db.collection("trips").doc(tripId);
       const [tripSnap, memberSnap] = await Promise.all([ tripRef.get(), tripRef.collection("members").get() ]);
       if(!tripSnap.exists){ alert("Trip not found"); location.replace("trips.html"); return; }
@@ -268,12 +307,14 @@
 
       // membership/admin
       isMember = memberSnap.docs.some(d=> d.id===me.uid);
+      dMember.textContent = isMember ? "yes" : "no";
       if(!isMember){ alert("You are not a member of this trip"); location.replace("trips.html"); return; }
       const myDoc = memberSnap.docs.find(d=> d.id===me.uid);
       isAdmin = myDoc && myDoc.data().role === "admin";
+      dAdmin.textContent = isAdmin ? "yes" : "no";
       endTripBtn.style.display = isAdmin ? "inline-block" : "none";
 
-      // seed names & phones for HUD / list
+      // seed names & phones
       for(const d of memberSnap.docs){
         const m = d.data();
         memberInfo.set(d.id, {
@@ -289,7 +330,8 @@
     // ===== Live positions listener =====
     function attachLiveListener(){
       return db.collection("trips").doc(tripId).collection("live").onSnapshot(snap=>{
-        let bounds = [];
+        dLive.textContent = String(snap.size);
+        let toFit = [];
         snap.docChanges().forEach(ch=>{
           const uid = ch.doc.id;
           const data = ch.doc.data() || {};
@@ -298,11 +340,11 @@
           info.lat = data.lat; info.lng = data.lng; info.lastSeen = data.ts || Date.now();
           memberInfo.set(uid, info);
           upsertMemberMarker(uid, data.lat, data.lng, uid===me.uid);
-          bounds.push([data.lat, data.lng]);
+          toFit.push([data.lat, data.lng]);
         });
         renderLists();
-        if(bounds.length && map.getZoom() < 6){
-          const b = L.latLngBounds(bounds);
+        if(toFit.length && map.getZoom() < 6){
+          const b = L.latLngBounds(toFit);
           map.fitBounds(b.pad(0.3));
         }
       }, err=>{
@@ -311,7 +353,7 @@
       });
     }
 
-    // ===== Tracks (optional, recent) =====
+    // ===== Tracks (optional recent lines) =====
     function dayKey(ts=Date.now()){
       const d=new Date(ts); const yyyy=d.getFullYear(); const mm=String(d.getMonth()+1).padStart(2,"0"); const dd=String(d.getDate()).padStart(2,"0");
       return `${yyyy}-${mm}-${dd}`;
@@ -330,8 +372,10 @@
 
     // ===== Geolocation sharing =====
     function canGeo(){
+      const secure = isSecureContext();
+      dSecure.textContent = secure ? "yes" : "NO";
       if(!("geolocation" in navigator)) { setMsg("Geolocation not supported", true); return false; }
-      if (!isSecureContext()) { setMsg("GPS needs HTTPS or http://localhost", true); return false; }
+      if (!secure) { setMsg("GPS needs HTTPS or http://localhost", true); return false; }
       if (!isTripActive) { setMsg("Trip is ended — sharing disabled", true); return false; }
       return true;
     }
@@ -349,7 +393,7 @@
           const raw = localStorage.getItem(qKey); if(!raw) return;
           const arr = JSON.parse(raw)||[]; if(!arr.length) return;
           const batch = db.batch();
-          for(const p of arr){ batch.set(trackColl.doc(), p); }
+          arr.forEach(p=> batch.set(trackColl.doc(), p));
           await batch.commit();
           localStorage.removeItem(qKey);
         }catch(e){ console.warn("Flush queue failed", e); }
@@ -360,13 +404,16 @@
       watchId = navigator.geolocation.watchPosition(async pos=>{
         const { latitude:lat, longitude:lng, speed, heading, accuracy } = pos.coords;
         const ts = Date.now();
+        dGps.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)} @ ${new Date(ts).toLocaleTimeString()}`;
 
-        // write live (shows error on rules block)
+        // write live (surface rules errors)
         try{
           await liveRef.set({ lat, lng, ts, speed: speed||0, heading: heading||0, accuracy: accuracy||0 }, { merge:true });
+          dWrite.textContent = "OK";
           setMsg("Location updated");
         }catch(e){
           console.error("live write failed", e);
+          dWrite.textContent = "ERR: " + (e && e.message || e);
           setMsg("Live write denied: "+(e && e.message || e), true);
         }
 
@@ -377,7 +424,7 @@
         memberInfo.set(me.uid, { ...info, lat, lng, lastSeen: ts });
         renderLists();
 
-        // ~1/sec track point (queue when offline)
+        // ~1/sec track point
         if (ts - lastTrackTs >= 950){
           lastTrackTs = ts;
           const point = { lat, lng, ts };
@@ -394,6 +441,7 @@
       }, err=>{
         console.error(err);
         setMsg("GPS error: "+(err && err.message || err), true);
+        dGps.textContent = "ERROR: "+(err && err.message || err);
       }, opts);
 
       shareToggle._stop = ()=>{
@@ -433,27 +481,33 @@
       hudToggle.setAttribute("aria-expanded", open ? "false" : "true");
     });
 
+    // Diagnostics buttons
+    btnTestGps.onclick = requestOneShotCenter;
+    btnForcePrompt.onclick = requestOneShotCenter;
+
     // ===== Boot =====
     (async ()=>{
+      dSecure.textContent = isSecureContext() ? "yes" : "NO";
+      checkGeoPermission().then(state=>{ dPerm.textContent = state || "unknown"; });
+
       if(!tripId){ alert("Missing tripId"); location.replace("trips.html"); return; }
       await ensureLoggedIn();
       await loadTrip();
       const unsubLive = attachLiveListener();
       await loadRecentTracks();
 
-      // Permission hint & one-shot prompt (mobile-friendly)
+      // Soft prompt
       checkGeoPermission().then(state=>{
-        if(state === "denied"){
-          setMsg("Location permission is blocked. Tap 'Enable Location' and allow it in the prompt/site settings.", true);
-        }else if(state === "prompt"){
-          requestOneShotCenter();
-        }
+        dPerm.textContent = state || "unknown";
+        if(state === "prompt"){ requestOneShotCenter(); }
+        if(state === "denied"){ setMsg("Location permission is blocked. Use the lock icon → Site settings → Allow, then reload.", true); }
       });
 
-      // Fallback center (also triggers prompt)
+      // Fallback one-shot (helps on iOS)
       if(navigator.geolocation){
         navigator.geolocation.getCurrentPosition(p=>{
           map.setView([p.coords.latitude, p.coords.longitude], 14);
+          dGps.textContent = `${p.coords.latitude.toFixed(5)}, ${p.coords.longitude.toFixed(5)}`;
         }, ()=>{}, { enableHighAccuracy:true, maximumAge:10000, timeout:8000 });
       }
 
