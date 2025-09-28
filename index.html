@@ -1,260 +1,149 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Trip • Login</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Trip App – Login</title>
   <style>
-    :root{--bg:#0f172a;--card:#111827;--muted:#94a3b8;--accent:#22c55e;--danger:#ef4444;--text:#e5e7eb;}
-    *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;
-      background:linear-gradient(180deg,#0b1222,#0f172a);}
-    .wrap{min-height:100dvh;display:grid;place-items:center;padding:24px}
-    .card{width:100%;max-width:420px;background:rgba(17,24,39,.9);backdrop-filter: blur(8px);
-      border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:24px 20px;color:var(--text);
-      box-shadow:0 10px 30px rgba(0,0,0,.35)}
-    h1{margin:0 0 6px;font-size:22px;font-weight:700}
-    p.sub{margin:0 0 18px;color:var(--muted);font-size:14px}
-    label{display:block;margin:12px 0 6px;font-size:13px;color:#cbd5e1}
-    input{width:100%;padding:12px 14px;border-radius:10px;background:#0b1220;border:1px solid #263042;
-      color:var(--text);outline:none}
-    input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.2)}
-    .row{display:flex;gap:10px}
-    button{appearance:none;border:0;border-radius:10px;padding:12px 14px;font-weight:600;cursor:pointer}
-    .btn{background:#1f2937;color:#e5e7eb;border:1px solid #2c3444}
-    .btn.primary{background:var(--accent);color:#052e16;border:none}
-    .btn.danger{background:var(--danger)}
-    button[disabled]{opacity:.6;cursor:not-allowed}
-    .hint{font-size:12px;color:var(--muted);margin-top:6px}
-    .msg{margin-top:14px;font-size:14px}
-    .msg.ok{color:#86efac}.msg.err{color:#fecaca}
-    .footer{margin-top:18px;color:#9aa7bd;font-size:12px;text-align:center}
+    body{font-family:system-ui,Arial;background:#0f172a;color:#e5e7eb;margin:0;display:flex;align-items:center;justify-content:center;height:100vh}
+    .card{background:#111827;border:1px solid #2d3748;padding:24px;border-radius:16px;max-width:360px;width:100%}
+    h1{margin-top:0;font-size:22px;text-align:center}
+    input,button{width:100%;padding:10px;margin-top:10px;border-radius:12px;font-size:14px}
+    input{border:1px solid #374151;background:#0b1220;color:#e5e7eb}
+    input:focus{outline:2px solid #3b82f6}
+    button{border:none;background:#2563eb;color:#fff;cursor:pointer}
+    button:disabled{opacity:.5;cursor:default}
+    .msg{margin-top:10px;font-size:14px}
+    .ok{color:#86efac}.err{color:#fecaca}
     .hidden{display:none}
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <!-- STEP 1: Email + OTP -->
-      <div id="stepEmail">
-        <h1>Sign in with OTP</h1>
-        <p class="sub">Enter your email. We’ll send a one-time code.</p>
+  <div class="card">
+    <h1>Login</h1>
 
-        <label for="email">Email</label>
-        <div class="row">
-          <input id="email" type="email" placeholder="you@example.com" autocomplete="email" />
-          <button id="sendBtn" class="btn">Send OTP</button>
-        </div>
-        <div class="hint">You may request a new code every ~60s.</div>
-
-        <label for="otp">OTP Code</label>
-        <div class="row">
-          <input id="otp" inputmode="numeric" pattern="[0-9]*" placeholder="6-digit code" />
-          <button id="verifyBtn" class="btn primary">Verify</button>
-        </div>
-        <div id="msg" class="msg" role="status" aria-live="polite"></div>
-      </div>
-
-      <!-- STEP 2: Name (after OTP verified) -->
-      <div id="stepName" class="hidden">
-        <h1>Your name</h1>
-        <p class="sub">We’ll show this to friends in your trip. You can change it later.</p>
-        <label for="name">Name</label>
-        <input id="name" type="text" placeholder="e.g., Nitish" autocomplete="name" />
-
-        <div class="row" style="margin-top:12px">
-          <button id="saveContinueBtn" class="btn primary">Save & Continue</button>
-          <button id="skipBtn" class="btn">Continue</button>
-        </div>
-        <div id="msg2" class="msg" role="status" aria-live="polite"></div>
-      </div>
-
-      <div class="footer">
-        Location is only shared within trips you join.
-      </div>
+    <!-- Step 1: Email & OTP -->
+    <div id="stepEmail">
+      <input id="email" placeholder="Email" type="email"/>
+      <button id="sendOtpBtn">Send OTP</button>
+      <input id="otp" placeholder="Enter OTP" class="hidden"/>
+      <button id="verifyOtpBtn" class="hidden">Verify OTP</button>
     </div>
+
+    <!-- Step 2: Profile (name + phone) -->
+    <div id="stepProfile" class="hidden">
+      <input id="name" placeholder="Full Name"/>
+      <input id="phone" placeholder="Contact Number" type="tel"/>
+      <button id="saveProfileBtn">Save & Continue</button>
+    </div>
+
+    <div id="msg" class="msg"></div>
   </div>
 
-  <!-- Firebase (Compat) -->
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
   <script>
-    // =========================
-    // CONFIG
-    // =========================
-    const OTP_API_URL = "https://script.google.com/macros/s/AKfycbxDNRfdy9Ux1pjLP3bIrUuiyamnXo4N2HTV9wuaczaFWUC5Ea9RygVlPBg9c0amL4LtFQ/exec";
-
+    // ===== Firebase init =====
     const firebaseConfig = {
       apiKey: "AIzaSyB529yOEmk9sDDcUiD5tkyCRsmJpvOn66s",
       authDomain: "tripapp-27b4f.firebaseapp.com",
       projectId: "tripapp-27b4f",
       storageBucket: "tripapp-27b4f.firebasestorage.app",
       messagingSenderId: "796205117191",
-      appId: "1:796205117191:web:30507cc680c3b630b51fa2",
-      measurementId: "G-E7R0VTP3TQ"
+      appId: "1:796205117191:web:30507cc680c3b630b51fa2"
     };
-
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
-    auth.signInAnonymously().catch(err => console.warn("Anon sign-in failed", err));
 
-    // =========================
-    // JSONP HELPER
-    // =========================
-    function jsonpRequest(url, prefix) {
-      return new Promise((resolve, reject) => {
-        const cbName = prefix + "_" + Date.now();
-        const sep = url.includes("?") ? "&" : "?";
-        const src = url + sep + "callback=" + cbName + "&_=" + Date.now();
-        window[cbName] = (data) => { resolve(data); cleanup(); };
-        const script = document.createElement("script");
-        script.src = src; script.async = true;
-        script.onerror = () => { reject(new Error("Network error")); cleanup(); };
-        function cleanup() { try{ delete window[cbName]; }catch{} if (script.parentNode) script.parentNode.removeChild(script); }
-        document.body.appendChild(script);
-      });
-    }
+    // ===== OTP API URL =====
+    const OTP_API = "https://script.google.com/macros/s/AKfycbxDNRfdy9Ux1pjLP3bIrUuiyamnXo4N2HTV9wuaczaFWUC5Ea9RygVlPBg9c0amL4LtFQ/exec";
 
-    // =========================
-    // UTILS
-    // =========================
-    async function sha256Hex(text) {
-      const enc = new TextEncoder().encode(text);
-      const buf = await crypto.subtle.digest("SHA-256", enc);
-      return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
-    }
-    function show(el, on){ el.classList.toggle("hidden", !on); }
-    function showMsg(el, text, isErr=false){ el.textContent=text||""; el.className="msg "+(isErr?"err":"ok"); }
-
-    // =========================
-    // ELEMENTS
-    // =========================
+    // ===== UI refs =====
+    const emailEl = document.getElementById("email");
+    const otpEl = document.getElementById("otp");
+    const sendOtpBtn = document.getElementById("sendOtpBtn");
+    const verifyOtpBtn = document.getElementById("verifyOtpBtn");
     const stepEmail = document.getElementById("stepEmail");
-    const stepName  = document.getElementById("stepName");
 
-    const emailEl   = document.getElementById("email");
-    const otpEl     = document.getElementById("otp");
-    const sendBtn   = document.getElementById("sendBtn");
-    const verifyBtn = document.getElementById("verifyBtn");
-    const msgEl     = document.getElementById("msg");
+    const stepProfile = document.getElementById("stepProfile");
+    const nameEl = document.getElementById("name");
+    const phoneEl = document.getElementById("phone");
+    const saveProfileBtn = document.getElementById("saveProfileBtn");
 
-    const nameEl         = document.getElementById("name");
-    const saveContinueBtn= document.getElementById("saveContinueBtn");
-    const skipBtn        = document.getElementById("skipBtn");
-    const msg2El         = document.getElementById("msg2");
+    const msgEl = document.getElementById("msg");
 
-    // =========================
-    // SEND OTP
-    // =========================
-    sendBtn.addEventListener("click", async () => {
+    // ===== Helpers =====
+    function showMsg(t,isErr=false){ msgEl.textContent=t; msgEl.className="msg "+(isErr?"err":"ok"); }
+    async function sha256Hex(txt){ const enc=new TextEncoder().encode(txt); const buf=await crypto.subtle.digest("SHA-256",enc); return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join(""); }
+
+    // ===== OTP Flow =====
+    sendOtpBtn.onclick = ()=>{
+      const email = emailEl.value.trim();
+      if(!email){ showMsg("Enter email", true); return; }
+      showMsg("Sending OTP…");
+      const script = document.createElement("script");
+      script.src = `${OTP_API}?action=sendOtp&email=${encodeURIComponent(email)}&callback=onOtpSent`;
+      document.body.appendChild(script);
+    };
+    window.onOtpSent = (res)=>{
+      if(res.ok){ showMsg("OTP sent to email."); otpEl.classList.remove("hidden"); verifyOtpBtn.classList.remove("hidden"); }
+      else showMsg(res.message, true);
+    };
+
+    verifyOtpBtn.onclick = ()=>{
+      const email = emailEl.value.trim();
+      const otp = otpEl.value.trim();
+      if(!email||!otp){ showMsg("Enter email + OTP", true); return; }
+      showMsg("Verifying…");
+      const script = document.createElement("script");
+      script.src = `${OTP_API}?action=verifyOtp&email=${encodeURIComponent(email)}&otp=${encodeURIComponent(otp)}&callback=onOtpVerified`;
+      document.body.appendChild(script);
+    };
+    window.onOtpVerified = async (res)=>{
+      if(!res.ok){ showMsg(res.message, true); return; }
+      const email = res.data.email;
+      const emailHash = await sha256Hex(email.toLowerCase());
+
+      // sign in anon
+      if(!auth.currentUser){ await auth.signInAnonymously(); }
+      const uid = auth.currentUser.uid;
+
+      // link auth to emailHash
+      await db.collection("authLinks").doc(uid).set({ emailHash });
+
+      // fetch profile (prefill if exists)
+      const profSnap = await db.collection("profiles").doc(emailHash).get();
+      if(profSnap.exists){
+        const p = profSnap.data();
+        nameEl.value = p.name || "";
+        phoneEl.value = p.phone || "";
+      }
+
+      stepEmail.classList.add("hidden");
+      stepProfile.classList.remove("hidden");
+      showMsg("OTP verified! Please complete profile.");
+    };
+
+    // ===== Save Profile =====
+    saveProfileBtn.onclick = async ()=>{
+      const name = nameEl.value.trim();
+      const phone = phoneEl.value.trim();
       const email = emailEl.value.trim().toLowerCase();
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showMsg(msgEl, "Enter a valid email.", true); emailEl.focus(); return; }
+      if(!name || !phone){ showMsg("Enter name + phone", true); return; }
+      const emailHash = await sha256Hex(email);
 
-      sendBtn.disabled = true;
-      showMsg(msgEl, "Sending OTP...");
-      try {
-        const url = `${OTP_API_URL}?action=sendOtp&email=${encodeURIComponent(email)}`;
-        const r = await jsonpRequest(url, "sendOtpCb");
-        if (r && r.ok) {
-          showMsg(msgEl, "OTP sent. Check your inbox.");
-          let left = 60;
-          const t = setInterval(() => {
-            left--;
-            sendBtn.textContent = left > 0 ? `Wait ${left}s` : "Send OTP";
-            if (left <= 0) { clearInterval(t); sendBtn.disabled = false; sendBtn.textContent="Send OTP"; }
-          }, 1000);
-        } else {
-          showMsg(msgEl, (r && r.message) || "Failed to send OTP.", true);
-          sendBtn.disabled = false;
-        }
-      } catch (e) {
-        console.error(e);
-        showMsg(msgEl, "Network error while sending OTP.", true);
-        sendBtn.disabled = false;
-      }
-    });
+      await db.collection("profiles").doc(emailHash).set({ email, name, phone }, { merge:true });
+      showMsg("Profile saved!");
 
-    // =========================
-    // VERIFY OTP → LINK UID TO EMAILHASH → PREFILL NAME
-    // =========================
-    verifyBtn.addEventListener("click", async () => {
-      const email = emailEl.value.trim().toLowerCase();
-      const otp   = otpEl.value.trim();
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showMsg(msgEl, "Enter valid email", true); emailEl.focus(); return; }
-      if (!otp) { showMsg(msgEl, "Enter OTP.", true); otpEl.focus(); return; }
-
-      verifyBtn.disabled = true;
-      showMsg(msgEl, "Verifying...");
-      try {
-        const url = `${OTP_API_URL}?action=verifyOtp&email=${encodeURIComponent(email)}&otp=${encodeURIComponent(otp)}`;
-        const r = await jsonpRequest(url, "verifyOtpCb");
-        if (!(r && r.ok)) {
-          showMsg(msgEl, (r && r.message) || "Invalid OTP.", true);
-          verifyBtn.disabled = false; return;
-        }
-
-        // We have verified email. Link it in Firestore -> authLinks/{uid}
-        const user = auth.currentUser || await auth.signInAnonymously();
-        const uid = user.uid;
-        const emailHash = await sha256Hex(email);
-
-        await db.collection("authLinks").doc(uid).set({
-          emailHash: emailHash,
-          email: email,     // optional; keep if you want it for display later
-          linkedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-
-        // Prefill Name: get profiles/{emailHash} if exists
-        const profRef = db.collection("profiles").doc(emailHash);
-        const prof = await profRef.get();
-        const existingName = prof.exists && prof.data().name ? prof.data().name : "";
-        nameEl.value = existingName;
-
-        // Switch UI to Name step
-        show(stepEmail, false);
-        show(stepName, true);
-        showMsg(msgEl, "Verified!");
-        setTimeout(()=> showMsg(msgEl,""), 400);
-
-      } catch (e) {
-        console.error(e);
-        showMsg(msgEl, "Network or database error.", true);
-        verifyBtn.disabled = false;
-      }
-    });
-
-    // =========================
-    // NAME STEP: SAVE / SKIP -> WRITE TO profiles/{emailHash}
-    // =========================
-    async function continueToTrips(saveName) {
-      try {
-        const user = auth.currentUser;
-        if (!user) { alert("Not signed in"); return; }
-        const link = await db.collection("authLinks").doc(user.uid).get();
-        if (!link.exists) { alert("Link missing. Please login again."); return; }
-        const emailHash = link.data().emailHash;
-        const profRef = db.collection("profiles").doc(emailHash);
-
-        const finalName = (saveName || nameEl.value || "").trim() || "Anon";
-        await profRef.set({ name: finalName }, { merge: true });
-
-        location.href = "trips.html";
-      } catch (e) {
-        console.error(e);
-        showMsg(msg2El, "Could not save name. Try again.", true);
-      }
-    }
-
-    saveContinueBtn.addEventListener("click", () => continueToTrips());
-    skipBtn.addEventListener("click", () => continueToTrips());
-
-    // Enter shortcuts
-    emailEl.addEventListener("keydown", e => { if(e.key==="Enter") sendBtn.click(); });
-    otpEl.addEventListener("keydown", e => { if(e.key==="Enter") verifyBtn.click(); });
-    nameEl.addEventListener("keydown", e => { if(e.key==="Enter") saveContinueBtn.click(); });
+      // go to trips
+      const params = new URLSearchParams(location.search);
+      const next = params.get("next") || "trips.html";
+      location.href = next;
+    };
   </script>
 </body>
 </html>
