@@ -368,13 +368,14 @@
         });
     }
 
-    // ===== Create Trip (stores joinCodePlain) =====
+    // ===== Create Trip (stores joinCodePlain, writes phone on membership) =====
     createBtn.addEventListener("click", async ()=>{
       const name = tripNameEl.value.trim();
       if(!name){ showMsg("Enter trip name", true); return; }
       if(!currentUser){ showMsg("Not signed in", true); return; }
 
       const displayName = (currentProfile && currentProfile.name) ? currentProfile.name : "Anon";
+      const phone = (currentProfile && currentProfile.phone) ? String(currentProfile.phone) : "";
       const joinCode = genJoinCode();
       const joinCodeHash = await sha256Hex(joinCode);
       const tripId = db.collection("trips").doc().id;
@@ -396,13 +397,17 @@
           tripId, isActive:true, allowNewJoins:true,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-        // membership
+        // membership (with phone)
         const memRef = db.collection("trips").doc(tripId).collection("members").doc(currentUser.uid);
         await memRef.set({
           uid: currentUser.uid,
-          role:"admin", displayName, shareEnabled:false,
+          role:"admin",
+          displayName,
+          phone,                            // <— phone saved
+          shareEnabled:false,
           joinedAt: firebase.firestore.FieldValue.serverTimestamp(),
-          createdBy: currentUser.uid, codeHash: joinCodeHash
+          createdBy: currentUser.uid,
+          codeHash: joinCodeHash
         });
         await memRef.update({codeHash: firebase.firestore.FieldValue.delete()});
         // userTrips index
@@ -425,26 +430,32 @@
       openInviteWithCode("Invite", lastInvite.code);
     });
 
-    // ===== Join by code (also used by scanner) =====
+    // ===== Join by code (also used by scanner) — writes phone on membership =====
     joinBtn.addEventListener("click", ()=> joinByCode(joinCodeEl.value));
     async function joinByCode(plain){
       const code=(plain||"").trim().toUpperCase(); if(!code){ showMsg("Enter join code", true); return; }
       if(!currentUser){ showMsg("Not signed in", true); return; }
 
       const displayName = (currentProfile && currentProfile.name) ? currentProfile.name : "Anon";
+      const phone = (currentProfile && currentProfile.phone) ? String(currentProfile.phone) : "";
+
       try{
         const codeHash = await sha256Hex(code);
         const j = await db.collection("joinCodes").doc(codeHash).get();
         if(!j.exists || !j.data().isActive || !j.data().allowNewJoins){ showMsg("Invalid or closed code.", true); return; }
         const tripId=j.data().tripId;
 
-        // create my member doc
+        // create my member doc (with phone)
         const memRef = db.collection("trips").doc(tripId).collection("members").doc(currentUser.uid);
         await memRef.set({
           uid: currentUser.uid,
-          role:"member", displayName, shareEnabled:false,
+          role:"member",
+          displayName,
+          phone,                            // <— phone saved
+          shareEnabled:false,
           joinedAt: firebase.firestore.FieldValue.serverTimestamp(),
-          createdBy: currentUser.uid, codeHash: codeHash
+          createdBy: currentUser.uid,
+          codeHash: codeHash
         });
         await memRef.update({codeHash: firebase.firestore.FieldValue.delete()});
         // add to userTrips index
@@ -462,7 +473,6 @@
 
     // ===== Global Scan button opens scanner-only modal =====
     scanBtn.onclick = async ()=>{
-      // blank QR (so the box has size) & show modal on Scan tab
       inviteTitle.textContent = "Scan to Join";
       tabScan.classList.add("active"); tabCode.classList.remove("active");
       panelScan.style.display="block"; panelCode.style.display="none";
@@ -473,7 +483,6 @@
     // ===== Boot =====
     (async ()=>{
       await ensureLoggedIn();               // redirects to index.html if not fully logged in
-      // initial paint + realtime
       renderTrips(await fetchMyTripsFromIndex(currentUser.uid));
       attachRealtimeIndex(currentUser.uid);
     })();
