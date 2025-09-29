@@ -15,17 +15,14 @@
     header .muted{color:var(--muted);font-size:13px}
     header .actions{display:flex;gap:8px;flex-wrap:wrap}
     button{padding:9px 12px;border-radius:10px;border:1px solid #374151;background:#1f2937;color:#e5e7eb;cursor:pointer;font-size:14px}
-    .btn.primary{background:var(--accent);color:#052e16;border:none}
     .btn.danger{background:#ef4444;color:#2f0b0b;border:none}
     main{height:calc(100vh - 56px);display:grid;grid-template-columns:1fr 320px}
     #map{width:100%;height:100%}
     aside{border-left:1px solid rgba(255,255,255,.06);background:#0b1220;display:flex;flex-direction:column}
     .panel{padding:12px;overflow:auto}
     .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .switch{display:flex;align-items:center;gap:8px}
-    .switch input{transform:scale(1.2)}
     .muted{color:var(--muted)}
-    .member{padding:10px;border:1px solid #2d3748;border-radius:10px;margin-bottom:8px;background:#0b1020}
+    .member{padding:10px;border:1px solid #2d3748;border-radius:10px;margin-bottom:8px;background:#0b1020;cursor:pointer}
     .member .name{font-weight:700}
     .member .sub{font-size:12px;color:var(--muted)}
     .member .sub a{color:#93c5fd;text-decoration:none;font-weight:600}
@@ -41,19 +38,37 @@
     .hud-title{margin:0;font-size:13px;color:#cbd5e1;font-weight:600}
     .hud-toggle{background:#0f1a32;border:1px solid #2a3e65;border-radius:8px;padding:4px 8px;font-size:12px;color:#dbeafe}
     .hud-list{display:flex;gap:8px;flex-wrap:wrap;max-height:36vh;overflow:auto;margin-top:8px}
-    .chip{font-size:13px;border:1px solid #2b3b5a;border-radius:999px;padding:7px 10px;display:flex;gap:8px;align-items:center;background:#101a2f}
+    .chip{font-size:13px;border:1px solid #2b3b5a;border-radius:999px;padding:7px 10px;display:flex;gap:8px;align-items:center;background:#101a2f;cursor:pointer}
     .chip .dot{width:9px;height:9px;border-radius:50%}
     .chip a{color:#93c5fd;text-decoration:none;font-weight:600}
     @media (max-width:900px){ .hud{max-height:50vh} }
 
-    /* Diagnostics — bottom-right */
-    .diag{position:fixed;right:10px;bottom:10px;max-width:92vw;min-width:260px;background:#0b1220;border:1px solid #243047;border-radius:14px;padding:8px 10px;z-index:5000;box-shadow:0 6px 20px rgba(0,0,0,.35)}
-    .diag h4{margin:0 0 6px 0;font-size:13px;color:#cbd5e1}
-    .kv{font-size:12px;color:#cbd5e1}
+    /* Marker label pill */
+    .label-pill{
+      background:rgba(0,0,0,.65);
+      color:#fff;
+      border-radius:999px;
+      padding:2px 8px;
+      font-size:12px;
+      line-height:18px;
+      border:1px solid rgba(255,255,255,.15);
+      white-space:nowrap;
+      box-shadow:0 2px 8px rgba(0,0,0,.35);
+      display:flex;align-items:center;gap:6px
+    }
+    .label-dot{width:8px;height:8px;border-radius:50%}
+    /* Blocking banner when permission off */
+    .blocker{
+      position:fixed;inset:0;background:rgba(5,10,20,.9);display:none;align-items:center;justify-content:center;z-index:9000;padding:24px;text-align:center
+    }
+    .blocker .card{max-width:520px;background:#0b1220;border:1px solid #253047;border-radius:16px;padding:18px}
+    .blocker h3{margin:0 0 8px 0}
+    .blocker p{margin:4px 0;color:#cbd5e1}
+    .blocker .hint{color:#93c5fd;font-size:14px}
+    /* Minimal diagnostics (can hide by setting display:none) */
+    .diag{position:fixed;right:10px;bottom:10px;min-width:240px;background:#0b1220;border:1px solid #243047;border-radius:14px;padding:8px 10px;z-index:4000}
+    .diag .kv{font-size:12px;color:#cbd5e1}
     .kv .k{color:#94a3b8}
-    .diag .row{margin-top:6px}
-    .mini{font-size:12px}
-    .badge{display:inline-block;border:1px solid #334155;border-radius:8px;padding:2px 6px;margin-left:6px}
   </style>
 </head>
 <body>
@@ -66,11 +81,6 @@
       </div>
     </div>
     <div class="actions">
-      <button id="locBtn" class="btn">Enable Location</button>
-      <div class="switch">
-        <input type="checkbox" id="shareToggle"/>
-        <label for="shareToggle">Share my location</label>
-      </div>
       <button id="endTripBtn" class="btn danger" style="display:none">End Trip</button>
     </div>
   </header>
@@ -79,7 +89,7 @@
     <div id="map"></div>
     <aside>
       <div class="panel">
-        <div class="row"><div class="muted">Live members</div></div>
+        <div class="row"><div class="muted">Live members (tap to focus)</div></div>
         <div id="membersList" style="margin-top:8px"></div>
         <div id="msg" class="msg"></div>
       </div>
@@ -95,22 +105,22 @@
     <div id="hudList" class="hud-list"></div>
   </div>
 
-  <!-- Diagnostics -->
-  <div class="diag" id="diag">
-    <h4>Diagnostics</h4>
+  <!-- Permission blocker -->
+  <div class="blocker" id="blocker">
+    <div class="card">
+      <h3>Location required</h3>
+      <p>We need your location to share with the trip and measure distances.</p>
+      <p class="hint">Tap the <b>lock icon</b> in your browser → <b>Site settings</b> → <b>Location: Allow</b>, then come back and reload.</p>
+    </div>
+  </div>
+
+  <!-- (Optional) slim diagnostics -->
+  <div class="diag" id="diag" style="display:none">
     <div class="kv"><span class="k">Secure:</span> <span id="dSecure">—</span></div>
     <div class="kv"><span class="k">Geo perm:</span> <span id="dPerm">—</span></div>
-    <div class="kv"><span class="k">Origin:</span> <span id="dOrigin">—</span> <span id="dCache" class="badge"></span></div>
     <div class="kv"><span class="k">UID:</span> <span id="dUid">—</span></div>
     <div class="kv"><span class="k">Trip:</span> <span id="dTrip">—</span></div>
-    <div class="kv"><span class="k">Member/Admin:</span> <span id="dMember">—</span> / <span id="dAdmin">—</span></div>
-    <div class="kv"><span class="k">Last GPS:</span> <span id="dGps">—</span></div>
     <div class="kv"><span class="k">Live write:</span> <span id="dWrite">—</span></div>
-    <div class="kv"><span class="k">Live docs:</span> <span id="dLive">0</span></div>
-    <div class="row">
-      <button id="btnTestGps" class="btn mini">Test GPS</button>
-      <button id="btnForcePrompt" class="btn mini">Force Prompt</button>
-    </div>
   </div>
 
   <!-- Leaflet -->
@@ -142,28 +152,19 @@
     const backBtn = document.getElementById("backBtn");
     const tripNameEl = document.getElementById("tripName");
     const tripMetaEl = document.getElementById("tripMeta");
-    const shareToggle = document.getElementById("shareToggle");
     const endTripBtn = document.getElementById("endTripBtn");
-    const locBtn = document.getElementById("locBtn");
     const membersList = document.getElementById("membersList");
     const msgEl = document.getElementById("msg");
     const hudToggle = document.getElementById("hudToggle");
     const hudList = document.getElementById("hudList");
+    const blocker = document.getElementById("blocker");
 
-    // Diagnostics refs
+    // Diagnostics (minimal)
     const dSecure = document.getElementById("dSecure");
     const dPerm   = document.getElementById("dPerm");
-    const dOrigin = document.getElementById("dOrigin");
-    const dCache  = document.getElementById("dCache");
     const dUid    = document.getElementById("dUid");
     const dTrip   = document.getElementById("dTrip");
-    const dMember = document.getElementById("dMember");
-    const dAdmin  = document.getElementById("dAdmin");
-    const dGps    = document.getElementById("dGps");
     const dWrite  = document.getElementById("dWrite");
-    const dLive   = document.getElementById("dLive");
-    const btnTestGps = document.getElementById("btnTestGps");
-    const btnForcePrompt = document.getElementById("btnForcePrompt");
 
     function setMsg(txt, isErr=false){ msgEl.textContent = txt; msgEl.className = "msg"+(isErr?" err":""); }
 
@@ -174,7 +175,7 @@
       return new Promise((resolve)=>{
         auth.onAuthStateChanged(async (u)=>{
           if(!u){ location.replace("index.html?next="+encodeURIComponent(location.pathname+location.search)); return; }
-          me = u; dUid.textContent = me.uid;
+          me = u; if(dUid) dUid.textContent = me.uid;
           try{
             const link = await db.collection("authLinks").doc(u.uid).get();
             if(!link.exists || !link.data().emailHash){ location.replace("index.html?next="+encodeURIComponent(location.pathname+location.search)); return; }
@@ -192,10 +193,35 @@
     const map = L.map('map', { zoomControl:true });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'&copy; OpenStreetMap'}).addTo(map);
 
+    // Member colors & labeled markers
+    const palette = [
+      "#22c55e","#60a5fa","#f59e0b","#ef4444","#a78bfa","#10b981",
+      "#f472b6","#f97316","#06b6d4","#84cc16","#eab308","#fb7185"
+    ];
+    const colorOf = new Map(); // uid -> color hex
+
+    function getColor(uid){
+      if(!colorOf.has(uid)){
+        const idx = (Array.from(colorOf.keys()).length) % palette.length;
+        colorOf.set(uid, palette[idx]);
+      }
+      return colorOf.get(uid);
+    }
+
+    function makeLabeledIcon(uid, name){
+      const color = getColor(uid);
+      const html = `
+        <div class="label-pill">
+          <span class="label-dot" style="background:${color}"></span>
+          <span>${name||"Anon"}</span>
+        </div>`;
+      return L.divIcon({ html, className:"", iconSize:null });
+    }
+
     // My state
     let watchId = null;
     let myMarker = null;
-    let myPolyline = L.polyline([], {opacity:0.9}).addTo(map);
+    let myPolyline = L.polyline([], {opacity:0.95}).addTo(map);
     let lastTrackTs = 0;
 
     // Others
@@ -206,22 +232,15 @@
     // ===== Helpers =====
     function haversineKm(lat1,lng1,lat2,lng2){
       const R=6371, toRad=(d)=>d*Math.PI/180;
-      const dLat=toRad(lat2-lat1), dLng=toRad(lng2-lng1);
+      const dLat=toRad(lat2-lat1), dLng=toRad(lat2-lng1);
       const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
       return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
     }
     function formatAgo(ts){ const s=Math.floor((Date.now()-ts)/1000); if(s<60) return s+"s ago"; const m=Math.floor(s/60); if(m<60) return m+"m ago"; const h=Math.floor(m/60); return h+"h ago"; }
     function isSecureContext(){ return location.protocol === "https:" || ["localhost","127.0.0.1","0.0.0.0"].includes(location.hostname); }
-    async function checkGeoPermission(){ if (!navigator.permissions?.query) return null; try { const st = await navigator.permissions.query({ name: "geolocation" }); return st.state; } catch { return null; } }
-    function requestOneShotCenter(){
-      if (!isSecureContext()){ setMsg("GPS needs HTTPS or http://localhost", true); return; }
-      navigator.geolocation.getCurrentPosition(
-        p => { map.setView([p.coords.latitude, p.coords.longitude], 14); setMsg("Location enabled."); dGps.textContent = `${p.coords.latitude.toFixed(5)}, ${p.coords.longitude.toFixed(5)}`; },
-        err => { setMsg("Location blocked. Allow in site settings, then reload.", true); console.error(err); dGps.textContent = "ERROR: "+(err && err.message || err); },
-        { enableHighAccuracy:true, maximumAge:0, timeout:12000 }
-      );
-    }
+    async function getGeoPerm(){ if (!navigator.permissions?.query) return null; try{ return (await navigator.permissions.query({name:"geolocation"})).state; }catch{ return null; } }
 
+    // ===== UI render =====
     function renderMembersList(){
       const my = memberInfo.get(me.uid);
       membersList.innerHTML="";
@@ -233,13 +252,17 @@
           const d = haversineKm(my.lat, my.lng, info.lat, info.lng);
           distTxt = d<1 ? (d*1000).toFixed(0)+" m" : d.toFixed(2)+" km";
         }
-        const tel = info.phone ? ` • <a href="tel:${info.phone}">Call</a>` : "";
+        const tel = info.phone ? ` • <a href="tel:${info.phone}" onclick="event.stopPropagation()">Call</a>` : "";
         const card = document.createElement("div");
         card.className="member";
         card.innerHTML = `
-          <div class="name">${info.name||"Anon"} ${isMe?'<span class="muted">(you)</span>':''}</div>
+          <div class="name" style="display:flex;align-items:center;gap:8px">
+            <span class="label-dot" style="background:${getColor(uid)}"></span>
+            ${info.name||"Anon"} ${isMe?'<span class="muted">(you)</span>':''}
+          </div>
           <div class="sub">${info.lat!=null?('Last seen '+formatAgo(info.lastSeen||Date.now())):'No signal'} • Distance: ${distTxt}${tel}</div>
         `;
+        card.addEventListener("click", ()=> focusOn(uid, true));
         membersList.appendChild(card);
       }
     }
@@ -255,9 +278,10 @@
         }
         const chip = document.createElement("div");
         chip.className="chip";
+        chip.addEventListener("click", ()=> focusOn(uid, true));
         const dot = document.createElement("span");
         dot.className="dot";
-        dot.style.background = uid===me.uid ? "#22c55e" : "#60a5fa";
+        dot.style.background = getColor(uid);
         chip.appendChild(dot);
         const label = document.createElement("span");
         label.textContent = (info.name||"Anon")+" • "+distTxt;
@@ -273,23 +297,42 @@
     }
     function renderLists(){ renderMembersList(); renderHud(); }
 
-    function upsertMemberMarker(uid, lat, lng, isMe=false){
+    function upsertMemberMarker(uid, lat, lng, name, isMe=false){
       let m = memberMarkers.get(uid);
-      if(!m){ m = L.marker([lat,lng]).addTo(map); memberMarkers.set(uid, m); }
-      else { m.setLatLng([lat,lng]); }
+      if(!m){
+        m = L.marker([lat,lng], { icon: makeLabeledIcon(uid, name) }).addTo(map);
+        memberMarkers.set(uid, m);
+      }else{
+        m.setLatLng([lat,lng]);
+        m.setIcon(makeLabeledIcon(uid, name));
+      }
       if(isMe){ myMarker = m; }
     }
     function upsertMemberPolyline(uid, pts){
       let pl = memberPolylines.get(uid);
-      if(!pl){ pl = L.polyline(pts, {opacity: uid===me.uid? 1.0 : 0.6}).addTo(map); memberPolylines.set(uid, pl); }
-      else { pl.setLatLngs(pts); }
+      if(!pl){
+        pl = L.polyline(pts, {opacity: uid===me.uid? 1.0 : 0.6, color: getColor(uid)}).addTo(map);
+        memberPolylines.set(uid, pl);
+      }else{
+        pl.setLatLngs(pts);
+        pl.setStyle({ color: getColor(uid) });
+      }
+    }
+    function focusOn(uid, animate=false){
+      const info = memberInfo.get(uid);
+      if(!info || info.lat==null) return;
+      const target = L.latLng(info.lat, info.lng);
+      map.setView(target, Math.max(map.getZoom(), 15), { animate });
+      const m = memberMarkers.get(uid);
+      if(m) { try{ m.openPopup && m.openPopup(); }catch{} }
     }
 
-    // ===== Load trip basics and membership =====
+    // ===== Load trip & membership =====
+    let tripRef;
     async function loadTrip(){
       if(!tripId){ alert("Missing tripId"); location.replace("trips.html"); return; }
-      dTrip.textContent = tripId;
-      const tripRef = db.collection("trips").doc(tripId);
+      if(dTrip) dTrip.textContent = tripId;
+      tripRef = db.collection("trips").doc(tripId);
       const [tripSnap, memberSnap] = await Promise.all([ tripRef.get(), tripRef.collection("members").get() ]);
       if(!tripSnap.exists){ alert("Trip not found"); location.replace("trips.html"); return; }
 
@@ -300,16 +343,16 @@
 
       // membership/admin
       isMember = memberSnap.docs.some(d=> d.id===me.uid);
-      dMember.textContent = isMember ? "yes" : "no";
       if(!isMember){ alert("You are not a member of this trip"); location.replace("trips.html"); return; }
       const myDoc = memberSnap.docs.find(d=> d.id===me.uid);
       isAdmin = myDoc && myDoc.data().role === "admin";
-      dAdmin.textContent = isAdmin ? "yes" : "no";
       endTripBtn.style.display = isAdmin ? "inline-block" : "none";
 
       // seed names & phones
       for(const d of memberSnap.docs){
         const m = d.data();
+        // assign color once per member to keep consistent
+        getColor(d.id);
         memberInfo.set(d.id, {
           name: m.displayName || "Anon",
           phone: m.phone || "",
@@ -320,10 +363,9 @@
       map.setView([20.5937, 78.9629], 5); // India fallback
     }
 
-    // ===== Live positions listener =====
+    // ===== Live listener =====
     function attachLiveListener(){
-      return db.collection("trips").doc(tripId).collection("live").onSnapshot(snap=>{
-        dLive.textContent = String(snap.size);
+      return tripRef.collection("live").onSnapshot(snap=>{
         let toFit = [];
         snap.docChanges().forEach(ch=>{
           const uid = ch.doc.id;
@@ -332,7 +374,7 @@
           const info = memberInfo.get(uid) || { name:"Anon", phone:"" };
           info.lat = data.lat; info.lng = data.lng; info.lastSeen = data.ts || Date.now();
           memberInfo.set(uid, info);
-          upsertMemberMarker(uid, data.lat, data.lng, uid===me.uid);
+          upsertMemberMarker(uid, data.lat, data.lng, info.name, uid===me.uid);
           toFit.push([data.lat, data.lng]);
         });
         renderLists();
@@ -346,38 +388,59 @@
       });
     }
 
-    // ===== Tracks (recent) =====
+    // ===== Tracks =====
     function dayKey(ts=Date.now()){
       const d=new Date(ts); const yyyy=d.getFullYear(); const mm=String(d.getMonth()+1).padStart(2,"0"); const dd=String(d.getDate()).padStart(2,"0");
       return `${yyyy}-${mm}-${dd}`;
     }
     async function loadRecentTracks(){
       const today = dayKey();
-      const mSnap = await db.collection("trips").doc(tripId).collection("members").get();
+      const mSnap = await tripRef.collection("members").get();
       for(const m of mSnap.docs){
         const uid = m.id;
-        const ptsSnap = await db.collection("trips").doc(tripId).collection("tracks").doc(uid).collection(today)
+        const ptsSnap = await tripRef.collection("tracks").doc(uid).collection(today)
           .orderBy("ts","desc").limit(300).get();
         const pts = ptsSnap.docs.map(d=> d.data()).reverse().map(p=> [p.lat, p.lng]);
         if(pts.length){ upsertMemberPolyline(uid, pts); }
       }
     }
 
-    // ===== Geolocation sharing =====
+    // ===== Geolocation — force on; block UI if off =====
     function canGeo(){
       const secure = isSecureContext();
-      dSecure.textContent = secure ? "yes" : "NO";
-      if(!("geolocation" in navigator)) { setMsg("Geolocation not supported", true); return false; }
-      if (!secure) { setMsg("GPS needs HTTPS or http://localhost", true); return false; }
-      if (!isTripActive) { setMsg("Trip is ended — sharing disabled", true); return false; }
-      return true;
+      if(dSecure) dSecure.textContent = secure ? "yes" : "NO";
+      return ("geolocation" in navigator) && secure && isTripActive;
     }
+
+    async function ensureSharing(){
+      const perm = await getGeoPerm();
+      if(dPerm) dPerm.textContent = perm || "unknown";
+
+      if (!canGeo()){
+        blocker.style.display = "flex";
+        setMsg("Location required (HTTPS + permission).", true);
+        return;
+      }
+      if (perm === "denied" || perm === null){
+        blocker.style.display = "flex";
+        setMsg("Please allow location in browser settings.", true);
+        return;
+      }
+      // perm is granted or prompt (prompt will show on first getCurrentPosition)
+      blocker.style.display = "none";
+      startSharing(); // start (idempotent) — watchPosition wires once
+    }
+
     function startSharing(){
-      if(!canGeo()) { shareToggle.checked=false; return; }
+      if(watchId!=null) return; // already running
+      if(!canGeo()){
+        setMsg("Cannot start sharing: insecure or trip ended", true);
+        return;
+      }
       setMsg("Sharing…");
       const opts = { enableHighAccuracy:true, maximumAge:0, timeout:20000 };
-      const liveRef = db.collection("trips").doc(tripId).collection("live").doc(me.uid);
-      const trackColl = db.collection("trips").doc(tripId).collection("tracks").doc(me.uid).collection(dayKey());
+      const liveRef = tripRef.collection("live").doc(me.uid);
+      const trackColl = tripRef.collection("tracks").doc(me.uid).collection(dayKey());
 
       // offline queue for tracks
       const qKey = `trackQueue:${tripId}:${me.uid}`;
@@ -397,27 +460,26 @@
       watchId = navigator.geolocation.watchPosition(async pos=>{
         const { latitude:lat, longitude:lng, speed, heading, accuracy } = pos.coords;
         const ts = Date.now();
-        dGps.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)} @ ${new Date(ts).toLocaleTimeString()}`;
 
-        // write live (surface rules errors)
+        // write live
         try{
           await liveRef.set({ lat, lng, ts, speed: speed||0, heading: heading||0, accuracy: accuracy||0 }, { merge:true });
-          dWrite.textContent = "OK";
-          setMsg("Location updated");
+          if(dWrite) dWrite.textContent = "OK";
         }catch(e){
           console.error("live write failed", e);
-          dWrite.textContent = "ERR: " + (e && e.message || e);
+          if(dWrite) dWrite.textContent = "ERR: " + (e && e.message || e);
           setMsg("Live write denied: "+(e && e.message || e), true);
         }
 
         // my visuals
-        upsertMemberMarker(me.uid, lat, lng, true);
+        const myName = (memberInfo.get(me.uid)?.name) || profile?.name || "Me";
+        upsertMemberMarker(me.uid, lat, lng, myName, true);
         const cur = myPolyline.getLatLngs(); cur.push([lat,lng]); if(cur.length>300) cur.shift(); myPolyline.setLatLngs(cur);
-        const info = memberInfo.get(me.uid) || { name: profile?.name || "Me", phone: profile?.phone || "" };
+        const info = memberInfo.get(me.uid) || { name: myName, phone: profile?.phone || "" };
         memberInfo.set(me.uid, { ...info, lat, lng, lastSeen: ts });
         renderLists();
 
-        // ~1/sec track point
+        // 1/sec track point
         if (ts - lastTrackTs >= 950){
           lastTrackTs = ts;
           const point = { lat, lng, ts };
@@ -434,27 +496,24 @@
       }, err=>{
         console.error(err);
         setMsg("GPS error: "+(err && err.message || err), true);
-        dGps.textContent = "ERROR: "+(err && err.message || err);
+        blocker.style.display = "flex";
       }, opts);
 
-      shareToggle._stop = ()=>{
+      // cleanup hook on unload
+      window.addEventListener("beforeunload", ()=>{
         if (watchId!=null){ navigator.geolocation.clearWatch(watchId); watchId=null; }
         clearInterval(flushTimer);
-        setMsg("Sharing stopped");
-      };
+      }, { once:true });
     }
-    function stopSharing(){ if(shareToggle._stop){ shareToggle._stop(); shareToggle._stop=null; } }
 
     // ===== End trip (admin) =====
     async function endTrip(){
       if(!confirm("End this trip for everyone?")) return;
       try{
-        await db.collection("trips").doc(tripId).update({ isActive:false, endedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        await tripRef.update({ isActive:false, endedAt: firebase.firestore.FieldValue.serverTimestamp() });
         setMsg("Trip ended");
         endTripBtn.disabled = true;
         isTripActive = false;
-        stopSharing();
-        shareToggle.checked = false;
       }catch(e){
         setMsg("End trip failed: "+(e&&e.message||e), true);
       }
@@ -462,11 +521,7 @@
 
     // ===== Wire UI =====
     backBtn.onclick = ()=> history.length>1 ? history.back() : location.replace("trips.html");
-    shareToggle.addEventListener("change", ()=>{ if(shareToggle.checked) startSharing(); else stopSharing(); });
     endTripBtn.addEventListener("click", endTrip);
-    locBtn.onclick = requestOneShotCenter;
-
-    // HUD collapse/expand
     hudToggle.addEventListener("click", ()=>{
       const open = hudToggle.getAttribute("aria-expanded")==="true";
       hudList.style.display = open ? "none" : "flex";
@@ -474,62 +529,27 @@
       hudToggle.setAttribute("aria-expanded", open ? "false" : "true");
     });
 
-    // Permission monitor — auto-start when granted on HTTPS
-    async function monitorPermAndMaybeStart() {
-      const state = await checkGeoPermission();
-      dPerm.textContent = state || "unknown";
-      const secure = isSecureContext();
-      dSecure.textContent = secure ? "yes" : "NO";
-
-      if (secure && state === "granted" && !shareToggle.checked) {
-        shareToggle.checked = true;
-        startSharing();
-      } else if (secure && state === "prompt") {
-        setMsg("Tap 'Enable Location' to allow GPS.");
-      } else if (state === "denied") {
-        setMsg("Location is blocked. Lock icon → Site settings → Location: Allow → reload.", true);
-      }
-    }
-
     // ===== Boot =====
     (async ()=>{
-      // Show origin + HTTPS hint
-      dOrigin.textContent = `${location.protocol}//${location.host}${location.pathname}`;
-      if (location.protocol !== "https:" && !["localhost","127.0.0.1","0.0.0.0"].includes(location.hostname)) {
-        dCache.textContent = "NOT HTTPS";
-        dCache.style.color = "#fecaca";
-      }
-
-      dSecure.textContent = isSecureContext() ? "yes" : "NO";
-      checkGeoPermission().then(state=>{ dPerm.textContent = state || "unknown"; });
-
       if(!tripId){ alert("Missing tripId"); location.replace("trips.html"); return; }
+      if(dSecure) dSecure.textContent = isSecureContext() ? "yes" : "NO";
+
       await ensureLoggedIn();
       await loadTrip();
       const unsubLive = attachLiveListener();
       await loadRecentTracks();
 
-      // Monitor permission every 3s (some browsers update live)
-      monitorPermAndMaybeStart();
-      const permTimer = setInterval(monitorPermAndMaybeStart, 3000);
+      // Always try to start sharing; block the UI if permission is not allowed
+      await ensureSharing();
 
-      // Fallback one-shot to center (also triggers prompt on some browsers)
+      // Fallback: center to first known location (also prompts on some browsers)
       if(navigator.geolocation){
         navigator.geolocation.getCurrentPosition(p=>{
           map.setView([p.coords.latitude, p.coords.longitude], 14);
-          dGps.textContent = `${p.coords.latitude.toFixed(5)}, ${p.coords.longitude.toFixed(5)}`;
         }, ()=>{}, { enableHighAccuracy:true, maximumAge:10000, timeout:8000 });
       }
 
-      // Diagnostics buttons
-      btnTestGps.onclick = requestOneShotCenter;
-      btnForcePrompt.onclick = requestOneShotCenter;
-
-      window.addEventListener("beforeunload", ()=>{
-        stopSharing();
-        if(unsubLive) unsubLive();
-        clearInterval(permTimer);
-      });
+      window.addEventListener("beforeunload", ()=>{ unsubLive && unsubLive(); });
     })();
   </script>
 </body>
