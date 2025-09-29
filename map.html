@@ -1,28 +1,106 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Trip Map</title>
   <style>
-    body,html{margin:0;padding:0;height:100%;font-family:sans-serif;background:#0f172a;color:#fff}
+    :root{--bg:#0f172a;--card:#111827;--muted:#94a3b8}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:#e5e7eb}
+    header{padding:12px 16px;background:var(--card);display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.06)}
+    header .left{display:flex;align-items:center;gap:10px}
+    header .trip{font-weight:800;font-size:18px}
+    header .muted{color:var(--muted);font-size:13px}
+    header .actions{display:flex;gap:8px;flex-wrap:wrap}
+    button{padding:9px 12px;border-radius:10px;border:1px solid #374151;background:#1f2937;color:#e5e7eb;cursor:pointer;font-size:14px}
+    .btn.danger{background:#ef4444;color:#2f0b0b;border:none}
+    main{height:calc(100vh - 56px);display:grid;grid-template-columns:1fr 320px}
     #map{width:100%;height:100%}
-    #sidebar{
-      position:absolute;bottom:10px;left:10px;
-      background:rgba(15,23,42,0.9);padding:10px;
-      border-radius:8px;max-height:40%;overflow:auto;font-size:14px;width:250px;
+    aside{border-left:1px solid rgba(255,255,255,.06);background:#0b1220;display:flex;flex-direction:column}
+    .panel{padding:12px;overflow:auto}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .muted{color:var(--muted)}
+    .member{padding:10px;border:1px solid #2d3748;border-radius:12px;margin-bottom:8px;background:#0b1020;cursor:pointer}
+    .member .name{font-weight:800;display:flex;align-items:center;gap:8px}
+    .dot{width:10px;height:10px;border-radius:50%}
+    .member .sub{font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .call{padding:6px 10px;border-radius:999px;border:1px solid #1e3a5f;background:#0f1a32;color:#cde5ff;text-decoration:none;font-weight:700;font-size:12px}
+    .msg{font-size:13px;margin-top:8px;min-height:18px}
+    .err{color:#fecaca}
+    @media (max-width:900px){
+      main{grid-template-columns:1fr}
+      aside{position:fixed;right:0;bottom:0;left:0;max-height:45vh;border-left:none;border-top:1px solid rgba(255,255,255,.06)}
     }
-    .member{padding:6px;border-bottom:1px solid #334155;cursor:pointer}
-    .member:last-child{border-bottom:none}
-    .name{font-weight:600}
-    .dist{font-size:12px;color:#94a3b8}
+    /* HUD — bottom-left */
+    .hud{position:fixed;left:10px;bottom:10px;max-width:92vw;background:#0b1220;border:1px solid #243047;border-radius:14px;padding:8px 10px;z-index:5000;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+    .hud-header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .hud-title{margin:0;font-size:13px;color:#cbd5e1;font-weight:700}
+    .hud-toggle{background:#0f1a32;border:1px solid #2a3e65;border-radius:8px;padding:4px 8px;font-size:12px;color:#dbeafe}
+    .hud-list{display:flex;gap:8px;flex-wrap:wrap;max-height:36vh;overflow:auto;margin-top:8px}
+    .chip{font-size:13px;border:1px solid #2b3b5a;border-radius:999px;padding:7px 10px;display:flex;gap:8px;align-items:center;background:#101a2f;cursor:pointer}
+    .chip a{color:#93c5fd;text-decoration:none;font-weight:700}
+    /* Name label above marker */
+    .label-pill{
+      background:rgba(0,0,0,.75);
+      color:#fff;border-radius:999px;padding:4px 10px;
+      font-weight:800;font-size:13px;line-height:18px;
+      border:1px solid rgba(255,255,255,.18);
+      white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,.4);
+      display:flex;align-items:center;gap:8px;transform:translate(-50%,-30px)
+    }
+    .label-color{width:10px;height:10px;border-radius:50%}
+    /* Permission blocker */
+    .blocker{
+      position:fixed;inset:0;background:rgba(5,10,20,.9);display:none;align-items:center;justify-content:center;z-index:9000;padding:24px;text-align:center
+    }
+    .blocker .card{max-width:520px;background:#0b1220;border:1px solid #253047;border-radius:16px;padding:18px}
+    .blocker h3{margin:0 0 8px 0}
+    .blocker p{margin:4px 0;color:#cbd5e1}
+    .blocker .hint{color:#93c5fd;font-size:14px}
   </style>
 </head>
 <body>
-  <div id="map"></div>
-  <div id="sidebar">
-    <div id="tripName">Trip</div>
-    <div id="members"></div>
+  <header>
+    <div class="left">
+      <button id="backBtn">← Back</button>
+      <div>
+        <div class="trip" id="tripName">Trip</div>
+        <div class="muted" id="tripMeta"></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button id="endTripBtn" class="btn danger" style="display:none">End Trip</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="map"></div>
+    <aside>
+      <div class="panel">
+        <div class="row"><div class="muted">Live members (tap to focus)</div></div>
+        <div id="membersList" style="margin-top:8px"></div>
+        <div id="msg" class="msg"></div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- HUD -->
+  <div class="hud" id="hud">
+    <div class="hud-header">
+      <h4 class="hud-title">Members • distance from you</h4>
+      <button id="hudToggle" class="hud-toggle" aria-expanded="true">Hide</button>
+    </div>
+    <div id="hudList" class="hud-list"></div>
+  </div>
+
+  <!-- Permission blocker -->
+  <div class="blocker" id="blocker">
+    <div class="card">
+      <h3>Location required</h3>
+      <p>We need your location to share with the trip and measure distances.</p>
+      <p class="hint">Tap the <b>lock icon</b> in your browser → <b>Site settings</b> → <b>Location: Allow</b>, then reload.</p>
+    </div>
   </div>
 
   <!-- Firebase -->
@@ -30,11 +108,11 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
-  <!-- Google Maps -->
+  <!-- Google Maps (with geometry lib) -->
   <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDKQ9ObtOp348iAMvjoRPwjrHYcSD1wEPQ&libraries=geometry&callback=initMap"></script>
 
   <script>
-    // === Firebase Config ===
+    // ===== Firebase =====
     const firebaseConfig = {
       apiKey: "AIzaSyB529yOEmk9sDDcUiD5tkyCRsmJpvOn66s",
       authDomain: "tripapp-27b4f.firebaseapp.com",
@@ -44,123 +122,359 @@
       appId: "1:796205117191:web:30507cc680c3b630b51fa2"
     };
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
     const auth = firebase.auth();
+    const db = firebase.firestore();
 
+    // ===== URL params =====
     const params = new URLSearchParams(location.search);
     const tripId = params.get("tripId");
 
-    let map, me, isAdmin=false;
-    const colors=["red","blue","green","orange","purple","cyan","yellow","pink"];
-    const memberData=new Map(); // uid→{marker,polyline,color,info}
+    // ===== UI refs =====
+    const backBtn = document.getElementById("backBtn");
+    const tripNameEl = document.getElementById("tripName");
+    const tripMetaEl = document.getElementById("tripMeta");
+    const endTripBtn = document.getElementById("endTripBtn");
+    const membersList = document.getElementById("membersList");
+    const msgEl = document.getElementById("msg");
+    const hudToggle = document.getElementById("hudToggle");
+    const hudList = document.getElementById("hudList");
+    const blocker = document.getElementById("blocker");
 
-    // ====== Init Map ======
-    function initMap(){
-      map = new google.maps.Map(document.getElementById("map"), {
-        center:{lat:20.5937,lng:78.9629}, zoom:5,
-        mapTypeControl:false, streetViewControl:false, fullscreenControl:false
-      });
-      ensureLogin();
-    }
+    function setMsg(txt, isErr=false){ msgEl.textContent = txt; msgEl.className = "msg"+(isErr?" err":""); }
 
-    // ====== Auth ======
-    function ensureLogin(){
-      auth.onAuthStateChanged(async u=>{
-        if(!u){ location.href="index.html"; return; }
-        me=u;
-        await loadTrip();
-        attachLiveListener();
-        startLocationUpdates();
-      });
-    }
+    // ===== Auth guard =====
+    let me=null, isAdmin=false, isTripActive=true;
+    let tripRef = null;
 
-    // ====== Load Trip ======
-    async function loadTrip(){
-      const tripDoc=await db.collection("trips").doc(tripId).get();
-      if(!tripDoc.exists){ alert("Trip not found"); location.href="trips.html"; return; }
-      document.getElementById("tripName").textContent=tripDoc.data().name;
-      const mems=await db.collection("trips").doc(tripId).collection("members").get();
-      if(!mems.docs.find(d=>d.id===me.uid)){ alert("Not a member"); location.href="trips.html"; return; }
-      isAdmin= mems.docs.find(d=>d.id===me.uid).data().role==="admin";
-      mems.forEach((d,i)=>{
-        const data=d.data();
-        memberData.set(d.id,{info:data,color:colors[i%colors.length]});
-      });
-      renderMembers();
-    }
-
-    // ====== Render Members Sidebar ======
-    function renderMembers(){
-      const el=document.getElementById("members");
-      el.innerHTML="";
-      const my=memberData.get(me.uid);
-      memberData.forEach((m,uid)=>{
-        const div=document.createElement("div");
-        div.className="member";
-        div.innerHTML=`<div class="name" style="color:${m.color}">${m.info.displayName||"Anon"} ${uid===me.uid?"(you)":""}</div>
-          <div class="dist" id="dist-${uid}">—</div>`;
-        div.onclick=()=>{ if(m.marker) map.panTo(m.marker.getPosition()); };
-        el.appendChild(div);
-      });
-    }
-
-    // ====== Attach Live Listener ======
-    function attachLiveListener(){
-      db.collection("trips").doc(tripId).collection("live")
-        .onSnapshot(snap=>{
-          snap.docChanges().forEach(ch=>{
-            const uid=ch.doc.id;
-            const d=ch.doc.data();
-            if(!d.lat||!d.lng) return;
-            let m=memberData.get(uid);
-            if(!m) return;
-            if(!m.marker){
-              m.marker=new google.maps.Marker({
-                position:{lat:d.lat,lng:d.lng},map:map,
-                label:{text:m.info.displayName||"Anon",color:"#fff"},
-                icon:{path:google.maps.SymbolPath.CIRCLE,scale:8,fillColor:m.color,fillOpacity:1,strokeColor:"#000",strokeWeight:1}
-              });
-              m.polyline=new google.maps.Polyline({path:[{lat:d.lat,lng:d.lng}],strokeColor:m.color,strokeOpacity:0.8,map:map});
-            }else{
-              m.marker.setPosition({lat:d.lat,lng:d.lng});
-              const path=m.polyline.getPath(); path.push(new google.maps.LatLng(d.lat,d.lng));
-            }
-            m.last={lat:d.lat,lng:d.lng,ts:d.ts};
-            memberData.set(uid,m);
-          });
-          updateDistances();
+    function ensureLoggedIn(){
+      return new Promise(res=>{
+        auth.onAuthStateChanged(async (u)=>{
+          if(!u){ location.replace("index.html?next="+encodeURIComponent(location.pathname+location.search)); return; }
+          me = u;
+          res();
         });
-    }
-
-    // ====== Update Distances ======
-    function updateDistances(){
-      const my=memberData.get(me.uid);
-      if(!my||!my.last) return;
-      memberData.forEach((m,uid)=>{
-        if(uid===me.uid||!m.last) return;
-        const d=google.maps.geometry.spherical.computeDistanceBetween(
-          new google.maps.LatLng(my.last.lat,my.last.lng),
-          new google.maps.LatLng(m.last.lat,m.last.lng)
-        );
-        document.getElementById("dist-"+uid).textContent=(d<1000? d.toFixed(0)+" m":(d/1000).toFixed(2)+" km");
       });
     }
 
-    // ====== Start location updates ======
-    function startLocationUpdates(){
-      if(!navigator.geolocation){ alert("Enable location"); return; }
-      navigator.geolocation.watchPosition(async pos=>{
-        const {latitude:lat,longitude:lng,speed,heading,accuracy}=pos.coords;
-        const ts=Date.now();
-        const liveRef=db.collection("trips").doc(tripId).collection("live").doc(me.uid);
-        const trackRef=db.collection("trips").doc(tripId).collection("tracks").doc(me.uid).collection(new Date().toISOString().split("T")[0]);
-        try{
-          await liveRef.set({lat,lng,ts,speed,heading,accuracy},{merge:true});
-          await trackRef.doc().set({lat,lng,ts});
-        }catch(e){ console.error("Write failed",e); }
+    // ===== Member colors =====
+    const palette = ["#22c55e","#60a5fa","#f59e0b","#ef4444","#a78bfa","#10b981","#f472b6","#f97316","#06b6d4","#84cc16","#eab308","#fb7185"];
+    const colorOf = new Map(); // uid->hex
+    function getColor(uid){
+      if(!colorOf.has(uid)){
+        const idx = (Array.from(colorOf.keys()).length) % palette.length;
+        colorOf.set(uid, palette[idx]);
+      }
+      return colorOf.get(uid);
+    }
+
+    // ===== Google Maps objects =====
+    let map;
+    const markers = new Map();   // uid -> Marker
+    const labels  = new Map();   // uid -> Name overlay
+    const polylines = new Map(); // uid -> Polyline
+
+    // Proper pin path (Google pin)
+    const PIN_PATH = "M8 12c-2.21 0-4-1.79-4-4 0-3.31 4-7 4-7s4 3.69 4 7c0 2.21-1.79 4-4 4z";
+
+    class NameLabel extends google.maps.OverlayView {
+      constructor(position, text, color){ super(); this.position = position; this.text = text; this.color = color; this.div = null; }
+      onAdd(){
+        this.div = document.createElement('div');
+        this.div.className = 'label-pill';
+        this.div.innerHTML = `<span class="label-color" style="background:${this.color}"></span><span>${this.text}</span>`;
+        this.getPanes().overlayMouseTarget.appendChild(this.div);
+      }
+      draw(){
+        const proj = this.getProjection(); if(!proj || !this.div) return;
+        const point = proj.fromLatLngToDivPixel(this.position);
+        this.div.style.left = point.x + 'px';
+        this.div.style.top = point.y + 'px';
+        this.div.style.position = 'absolute';
+        this.div.style.pointerEvents = 'none';
+      }
+      onRemove(){ if(this.div && this.div.parentNode) this.div.parentNode.removeChild(this.div); this.div=null; }
+      setPosition(latLng){ this.position = latLng; this.draw(); }
+      setText(text){ this.text=text; if(this.div) this.div.querySelector('span:last-child').textContent=text; }
+      setColor(color){ this.color=color; if(this.div) this.div.querySelector('.label-color').style.background = color; }
+    }
+
+    // ===== Member info cache =====
+    const memberInfo = new Map(); // uid -> {name, phone, lat, lng, lastSeen}
+
+    function distText(from, to){
+      const m = google.maps.geometry.spherical.computeDistanceBetween(from, to);
+      return m < 1000 ? `${Math.round(m)} m` : `${(m/1000).toFixed(2)} km`;
+    }
+    function formatAgo(ts){
+      const s=Math.floor((Date.now()-ts)/1000);
+      if(s<60) return s+"s ago";
+      const m=Math.floor(s/60); if(m<60) return m+"m ago";
+      const h=Math.floor(m/60); return h+"h ago";
+    }
+
+    function renderLists(){
+      const my = memberInfo.get(me.uid);
+      // Sidebar
+      membersList.innerHTML="";
+      const entries = Array.from(memberInfo.entries()).sort((a,b)=> (a[1].name||"").localeCompare(b[1].name||""));
+      for(const [uid,info] of entries){
+        const isMe = uid===me.uid;
+        let dTxt = "—";
+        if(my && info.lat!=null && my.lat!=null){
+          dTxt = distText(new google.maps.LatLng(my.lat,my.lng), new google.maps.LatLng(info.lat,info.lng));
+        }
+        const item = document.createElement('div');
+        item.className = 'member';
+        item.innerHTML = `
+          <div class="name"><span class="dot" style="background:${getColor(uid)}"></span>${info.name||"Anon"} ${isMe?'<span class="muted">(you)</span>':''}</div>
+          <div class="sub">
+            <span>${info.lat!=null?('Last seen '+formatAgo(info.lastSeen||Date.now())):'No signal'}</span>
+            <span>•</span>
+            <span>Distance: <b>${dTxt}</b></span>
+            ${info.phone?`<a class="call" href="tel:${info.phone}" onclick="event.stopPropagation()">Call now</a>`:''}
+          </div>
+        `;
+        item.addEventListener('click', ()=>focusOn(uid,true));
+        membersList.appendChild(item);
+      }
+      // HUD
+      hudList.innerHTML="";
+      for(const [uid,info] of entries){
+        let dTxt = "—";
+        if(my && info.lat!=null && my.lat!=null){
+          dTxt = distText(new google.maps.LatLng(my.lat,my.lng), new google.maps.LatLng(info.lat,info.lng));
+        }
+        const chip = document.createElement("div");
+        chip.className = "chip";
+        chip.innerHTML = `<span class="dot" style="background:${getColor(uid)}"></span><span><b>${info.name||"Anon"}</b> • ${dTxt}</span>${info.phone?` <a href="tel:${info.phone}">Call</a>`:''}`;
+        chip.addEventListener('click', ()=>focusOn(uid,true));
+        hudList.appendChild(chip);
+      }
+    }
+
+    function upsertMember(uid, name, lat, lng, isMe=false){
+      const pos = new google.maps.LatLng(lat, lng);
+      const color = getColor(uid);
+
+      // Marker with pin icon
+      let mk = markers.get(uid);
+      const icon = {
+        path: PIN_PATH, // pin
+        fillColor: color, fillOpacity: 1,
+        strokeColor: "#0b1220", strokeWeight: 2,
+        scale: 2.2, anchor: new google.maps.Point(8, 12)
+      };
+      if(!mk){
+        mk = new google.maps.Marker({ position: pos, map, icon, title: name||"Anon", zIndex: isMe?999:1 });
+        markers.set(uid, mk);
+      }else{
+        mk.setPosition(pos); mk.setTitle(name||"Anon"); mk.setIcon(icon);
+      }
+
+      // Bold label
+      let lb = labels.get(uid);
+      if(!lb){ lb = new NameLabel(pos, name||"Anon", color); lb.setMap(map); labels.set(uid, lb); }
+      else { lb.setPosition(pos); lb.setText(name||"Anon"); lb.setColor(color); }
+
+      // Polyline track
+      let pl = polylines.get(uid);
+      if(!pl){
+        pl = new google.maps.Polyline({ path: [pos], strokeColor: color, strokeOpacity: isMe?1.0:0.9, strokeWeight: 4, map });
+        polylines.set(uid, pl);
+      }else{
+        const path = pl.getPath();
+        const last = path.getLength()? path.getAt(path.getLength()-1): null;
+        if(!last || last.lat()!=lat || last.lng()!=lng){
+          path.push(pos);
+          if(path.getLength()>300) path.removeAt(0);
+        }
+        pl.setOptions({ strokeColor: color, strokeOpacity: isMe?1.0:0.9 });
+      }
+    }
+
+    function focusOn(uid, animate=false){
+      const info = memberInfo.get(uid);
+      if(!info || info.lat==null) return;
+      const pos = new google.maps.LatLng(info.lat, info.lng);
+      map.panTo(pos);
+      if(map.getZoom() < 15) map.setZoom(15);
+    }
+
+    async function loadTrip(){
+      if(!tripId){ alert("Missing tripId"); location.replace("trips.html"); return; }
+      tripRef = db.collection("trips").doc(tripId);
+      const [tSnap, mSnap] = await Promise.all([ tripRef.get(), tripRef.collection("members").get() ]);
+      if(!tSnap.exists){ alert("Trip not found"); location.replace("trips.html"); return; }
+      const t = tSnap.data();
+      tripNameEl.textContent = t.name || "Trip";
+      tripMetaEl.textContent = (t.isActive===false ? "Ended" : "Active");
+      isTripActive = t.isActive !== false;
+      // Show trip name in button
+      endTripBtn.textContent = `End Trip — “${t.name||"Trip"}”`;
+
+      const iAm = mSnap.docs.find(d=> d.id===me.uid);
+      if(!iAm){ alert("You are not a member of this trip"); location.replace("trips.html"); return; }
+      isAdmin = iAm.data().role === "admin";
+      endTripBtn.style.display = isAdmin ? "inline-block" : "none";
+
+      for(const d of mSnap.docs){
+        const m = d.data();
+        getColor(d.id);
+        memberInfo.set(d.id, { name:m.displayName||"Anon", phone:m.phone||"", lat:null, lng:null, lastSeen:null });
+      }
+      renderLists();
+    }
+
+    function attachLiveListener(){
+      return tripRef.collection("live").onSnapshot(snap=>{
+        const toFit = [];
+        snap.forEach(doc=>{
+          const uid = doc.id;
+          const data = doc.data()||{};
+          if(data.lat==null || data.lng==null) return;
+          const info = memberInfo.get(uid) || { name:"Anon", phone:"" };
+          info.lat = data.lat; info.lng = data.lng; info.lastSeen = data.ts || Date.now();
+          memberInfo.set(uid, info);
+          upsertMember(uid, info.name, data.lat, data.lng, uid===me.uid);
+          toFit.push(new google.maps.LatLng(data.lat, data.lng));
+        });
+        renderLists();
+        if(toFit.length && map.getZoom() < 6){
+          const b = new google.maps.LatLngBounds();
+          toFit.forEach(p=> b.extend(p));
+          map.fitBounds(b, 80);
+        }
       }, err=>{
-        alert("Location error: "+err.message);
-      },{enableHighAccuracy:true,timeout:10000});
+        console.error(err);
+        setMsg("Live listener error: "+(err&&err.message||err), true);
+      });
+    }
+
+    function dayKey(ts=Date.now()){
+      const d=new Date(ts); const yyyy=d.getFullYear(); const mm=String(d.getMonth()+1).padStart(2,"0"); const dd=String(d.getDate()).padStart(2,"0");
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    async function loadRecentTracks(){
+      const today = dayKey();
+      const mSnap = await tripRef.collection("members").get();
+      for(const m of mSnap.docs){
+        const uid = m.id;
+        const ptsSnap = await tripRef.collection("tracks").doc(uid).collection(today).orderBy("ts","desc").limit(300).get();
+        const pts = ptsSnap.docs.map(d=> d.data()).reverse().map(p=> new google.maps.LatLng(p.lat, p.lng));
+        if(pts.length){
+          let pl = polylines.get(uid);
+          const color = getColor(uid);
+          if(!pl){
+            pl = new google.maps.Polyline({ path: pts, strokeColor: color, strokeOpacity: uid===me.uid?1.0:0.9, strokeWeight: 4, map });
+            polylines.set(uid, pl);
+          }else{
+            pl.setPath(pts);
+            pl.setOptions({ strokeColor: color });
+          }
+        }
+      }
+    }
+
+    async function ensureSharing(){
+      const secure = (location.protocol === "https:" || ["localhost","127.0.0.1","0.0.0.0"].includes(location.hostname));
+      if(!secure || !isTripActive || !navigator.geolocation){
+        blocker.style.display = "flex";
+        setMsg("Location required (HTTPS + permission).", true);
+        return;
+      }
+      // start watch (overwrite live doc; no merge)
+      const liveRef = tripRef.collection("live").doc(me.uid);
+      const trackColl = tripRef.collection("tracks").doc(me.uid).collection(dayKey());
+      try{ await liveRef.delete(); }catch(_){}
+
+      // offline queue for tracks
+      const qKey = `trackQueue:${tripId}:${me.uid}`;
+      const flushQueue = async ()=>{
+        try{
+          const raw = localStorage.getItem(qKey); if(!raw) return;
+          const arr = JSON.parse(raw)||[]; if(!arr.length) return;
+          const batch = db.batch();
+          arr.forEach(p=> batch.set(trackColl.doc(), p));
+          await batch.commit();
+          localStorage.removeItem(qKey);
+        }catch(e){ console.warn("Flush queue failed", e); }
+      };
+      flushQueue(); const flushTimer = setInterval(flushQueue, 5000);
+
+      let lastTrackTs = 0;
+      navigator.geolocation.watchPosition(async pos=>{
+        const { latitude:lat, longitude:lng, speed, heading, accuracy } = pos.coords;
+        const ts = Date.now();
+        try{
+          await liveRef.set({ lat, lng, ts, speed: speed||0, heading: heading||0, accuracy: accuracy||0 });
+        }catch(e){
+          console.error("live write failed", e);
+          setMsg("Live write denied: "+(e && e.message || e), true);
+        }
+        const point = { lat, lng, ts };
+        try{ await trackColl.doc().set(point); }
+        catch(e){
+          try{
+            const arr = JSON.parse(localStorage.getItem(qKey)||"[]");
+            arr.push(point);
+            localStorage.setItem(qKey, JSON.stringify(arr));
+          }catch(_){}
+        }
+      }, err=>{
+        console.error(err);
+        blocker.style.display = "flex";
+        setMsg("GPS error: "+(err && err.message || err), true);
+      }, { enableHighAccuracy:true, maximumAge:0, timeout:20000 });
+
+      window.addEventListener("beforeunload", ()=>clearInterval(flushTimer), { once:true });
+    }
+
+    async function endTrip(){
+      if(!confirm("End this trip for everyone?")) return;
+      try{
+        await tripRef.update({ isActive:false, endedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        setMsg("Trip ended");
+        endTripBtn.disabled = true;
+        isTripActive = false;
+      }catch(e){
+        setMsg("End trip failed: "+(e&&e.message||e), true);
+      }
+    }
+
+    // ===== Boot (Google callback) =====
+    async function initMap(){
+      // init map first
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 20.5937, lng: 78.9629 }, zoom: 5,
+        mapTypeControl: false, streetViewControl: false, fullscreenControl: false, clickableIcons: false
+      });
+
+      await ensureLoggedIn();
+      await loadTrip();
+
+      const unsubLive = attachLiveListener();
+      await loadRecentTracks();
+      await ensureSharing();
+
+      // center to current position once
+      if(navigator.geolocation){
+        navigator.geolocation.getCurrentPosition(p=>{
+          map.setCenter({ lat: p.coords.latitude, lng: p.coords.longitude });
+          map.setZoom(14);
+        }, ()=>{}, { enableHighAccuracy:true, maximumAge:10000, timeout:8000 });
+      }
+
+      // HUD & header wiring
+      document.getElementById("hudToggle").addEventListener("click", ()=>{
+        const btn = document.getElementById("hudToggle");
+        const open = btn.getAttribute("aria-expanded")==="true";
+        document.getElementById("hudList").style.display = open ? "none" : "flex";
+        btn.textContent = open ? "Show" : "Hide";
+        btn.setAttribute("aria-expanded", open ? "false" : "true");
+      });
+      endTripBtn.addEventListener("click", endTrip);
+      backBtn.onclick = ()=> history.length>1 ? history.back() : location.replace("trips.html");
+      window.addEventListener("beforeunload", ()=>{ unsubLive && unsubLive(); });
     }
   </script>
 </body>
