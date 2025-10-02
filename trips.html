@@ -1,131 +1,75 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Trips</title>
   <style>
-    :root{
-      --bg:#0f172a;--card:#111827;--muted:#94a3b8;--line:#374151;--accent:#22c55e;--chip:#0b1220
-    }
-    *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;background:var(--bg);color:#e5e7eb}
-    header{padding:14px 16px;background:var(--card);display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.06);position:sticky;top:0;z-index:10}
-    header .title{font-weight:700}
-    header .who{font-size:12px;color:var(--muted)}
-    header .actions{display:flex;gap:8px}
-    main{padding:16px;max-width:920px;margin:0 auto}
-    h2{margin:18px 0 8px;font-size:16px}
-    input,button{padding:10px 12px;border-radius:12px;border:1px solid var(--line);font-size:14px}
-    input{width:100%;background:#0b1220;color:#e5e7eb}
-    input:focus{outline:2px solid #3b82f6}
-    button{background:#1f2937;color:#e5e7eb;cursor:pointer}
-    .btn.primary{background:var(--accent);color:#052e16;border:none}
-    .btn.alt{background:#0b1220}
-    .row{display:flex;gap:10px;flex-wrap:wrap}
-    .grid{display:grid;gap:10px}
-    .grid.cols-2{grid-template-columns:1fr 1fr}
-    @media (max-width:700px){ .grid.cols-2{grid-template-columns:1fr} }
-    .card{background:#0b1220;border:1px solid #233047;border-radius:14px;padding:12px}
-    .list{margin-top:10px}
-    .trip{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;border:1px solid #2a3856;border-radius:14px;padding:12px;margin-bottom:10px;background:#0b1220}
-    .trip .name{font-weight:700}
-    .muted{color:var(--muted)}
-    .msg{margin-top:10px;font-size:14px;min-height:20px}
-    .msg.ok{color:#86efac}.msg.err{color:#fecaca}
-    /* modal */
-    .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
-    .sheet{background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:14px;max-width:480px;width:100%}
-    .tabs{display:flex;gap:6px;margin:6px 0 10px}
-    .tab{flex:1;text-align:center;padding:8px;border-radius:10px;background:#0b1220;border:1px solid #22314f;cursor:pointer}
-    .tab.active{background:#15213a;border-color:#2a3e65}
-    #inviteCodeBox{display:grid;place-items:center}
-    #inviteCode{font-size:26px;font-weight:800;letter-spacing:2px;margin:6px 0}
-    #qr{background:#0b1220;border:1px dashed #32466e;border-radius:12px;padding:10px;margin:10px 0;width:240px;height:240px;display:grid;place-items:center}
-    #reader{width:100%;max-width:360px;min-height:260px;background:#0b1220;border-radius:12px;overflow:hidden}
-    #scanError{margin-top:8px;font-size:13px;color:#fecaca;min-height:18px}
-    #cameraSelect{width:100%}
-    .chips{display:flex;gap:8px;flex-wrap:wrap}
-    .chip{border:1px solid #2b3b5a;background:var(--chip);padding:6px 10px;border-radius:999px;font-size:12px;color:#cbd5e1}
+    body{font-family:system-ui,Arial;background:#0f172a;color:#e5e7eb;margin:0}
+    header{padding:12px 16px;background:#111827;border-bottom:1px solid #2d3748;display:flex;justify-content:space-between;align-items:center}
+    h1{margin:0;font-size:18px}
+    button{padding:8px 12px;border-radius:8px;border:none;background:#2563eb;color:#fff;cursor:pointer;font-size:14px}
+    button:disabled{opacity:.5;cursor:default}
+    main{padding:16px}
+    .card{background:#111827;border:1px solid #2d3748;padding:16px;border-radius:12px;margin-bottom:16px}
+    input{padding:8px;width:100%;margin-top:8px;border-radius:8px;border:1px solid #374151;background:#0b1220;color:#e5e7eb}
+    .trip{padding:12px;border:1px solid #2d3748;border-radius:10px;margin-bottom:8px;background:#1f2937;cursor:pointer}
+    .trip:hover{background:#374151}
+    .muted{color:#94a3b8;font-size:13px}
+    .msg{margin-top:10px;font-size:14px}
+    .ok{color:#86efac}.err{color:#fecaca}
+    /* Modal */
+    .modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center}
+    .modal.hidden{display:none}
+    .modal .box{background:#111827;padding:20px;border-radius:12px;max-width:400px;width:90%}
   </style>
 </head>
 <body>
   <header>
-    <div>
-      <div class="title">My Trips</div>
-      <div class="who" id="who"></div>
-    </div>
-    <div class="actions">
-      <button id="scanBtn" class="btn alt">Scan to Join</button>
-      <button id="logoutBtn" class="btn alt">Sign out</button>
-    </div>
+    <h1>Trips</h1>
+    <button id="logoutBtn">Logout</button>
   </header>
 
   <main>
-    <div id="guard" class="card" style="display:none;text-align:center;color:#cbd5e1">Checking login…</div>
+    <!-- Create Trip -->
+    <div class="card">
+      <h3>Create Trip</h3>
+      <input id="tripName" placeholder="Trip Name"/>
+      <button id="createTripBtn">Create</button>
+    </div>
 
-    <section id="app" style="display:none">
-      <div class="grid cols-2">
-        <div class="card">
-          <h2>Create Trip</h2>
-          <input id="tripName" placeholder="Trip name"/>
-          <div class="row">
-            <button id="createBtn" class="btn primary" style="flex:1">Create Trip</button>
-            <button id="showLastInviteBtn" class="btn" title="Show last created invite">Last Invite</button>
-          </div>
-        </div>
+    <!-- Join Trip -->
+    <div class="card">
+      <h3>Join Trip</h3>
+      <input id="joinCode" placeholder="Enter Code"/>
+      <button id="joinTripBtn">Request to Join</button>
+      <button id="scanQrBtn">Scan QR</button>
+    </div>
 
-        <div class="card">
-          <h2>Join Trip</h2>
-          <div class="row" style="width:100%">
-            <input id="joinCode" style="flex:1" placeholder="Enter join code"/>
-            <button id="joinBtn" class="btn">Join</button>
-          </div>
-          <div class="chips" style="margin-top:8px">
-            <span class="muted" style="font-size:12px">Or scan using the button at top</span>
-          </div>
-        </div>
-      </div>
+    <!-- My Trips -->
+    <div class="card">
+      <h3>My Trips</h3>
+      <div id="tripsList"></div>
+    </div>
 
-      <div id="msg" class="msg"></div>
-
-      <h2 style="margin-top:16px">My Trips</h2>
-      <div id="tripsList" class="list"></div>
-      <div class="muted" id="emptyHint" style="display:none">No trips yet. Create one or join with a code.</div>
-    </section>
+    <div id="msg" class="msg"></div>
   </main>
 
-  <!-- Invite / Scan modal -->
-  <div id="inviteModal" class="modal">
-    <div class="sheet" onclick="event.stopPropagation()">
-      <h3 id="inviteTitle" style="margin:0 0 8px">Invite members</h3>
-      <div class="tabs">
-        <div id="tabCode" class="tab active">Code & QR</div>
-        <div id="tabScan" class="tab">Scan QR</div>
-      </div>
+  <!-- Join Requests Modal -->
+  <div id="requestsModal" class="modal hidden">
+    <div class="box">
+      <h3>Pending Join Requests</h3>
+      <div id="requestsList"></div>
+      <button id="closeRequests">Close</button>
+    </div>
+  </div>
 
-      <!-- Code + QR -->
-      <div id="panelCode">
-        <div id="inviteCodeBox">
-          <div class="muted" style="font-size:12px">Share this code</div>
-          <div id="inviteCode"></div>
-          <div id="qr"></div>
-        </div>
-        <div class="row">
-          <button id="copyCodeBtn" class="btn" style="flex:1">Copy Code</button>
-          <button id="closeInviteBtn" class="btn primary" style="flex:1">Done</button>
-        </div>
-      </div>
-
-      <!-- Scanner -->
-      <div id="panelScan" style="display:none">
-        <select id="cameraSelect" class="btn" style="margin-bottom:10px; display:none"></select>
-        <div id="reader"></div>
-        <div id="scanError"></div>
-        <div class="row" style="margin-top:10px">
-          <button id="closeScanBtn" class="btn" style="flex:1">Close</button>
-        </div>
-      </div>
+  <!-- QR Scan Modal -->
+  <div id="scanModal" class="modal hidden">
+    <div class="box">
+      <h3>Scan Trip QR</h3>
+      <video id="qrVideo" autoplay style="width:100%"></video>
+      <button id="closeScan">Close</button>
     </div>
   </div>
 
@@ -133,9 +77,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-  <!-- QR code + scanner -->
-  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-  <script src="https://unpkg.com/html5-qrcode@2.3.10/html5-qrcode.min.js"></script>
 
   <script>
     // ===== Firebase =====
@@ -145,347 +86,114 @@
       projectId: "tripapp-27b4f",
       storageBucket: "tripapp-27b4f.firebasestorage.app",
       messagingSenderId: "796205117191",
-      appId: "1:796205117191:web:30507cc680c3b630b51fa2",
+      appId: "1:796205117191:web:30507cc680c3b630b51fa2"
     };
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
 
     // ===== UI refs =====
-    const guardEl = document.getElementById("guard");
-    const appEl = document.getElementById("app");
-    const whoEl = document.getElementById("who");
-    const logoutBtn = document.getElementById("logoutBtn");
-    const scanBtn = document.getElementById("scanBtn");
-
     const tripNameEl = document.getElementById("tripName");
-    const createBtn = document.getElementById("createBtn");
-    const showLastInviteBtn = document.getElementById("showLastInviteBtn");
+    const createTripBtn = document.getElementById("createTripBtn");
     const joinCodeEl = document.getElementById("joinCode");
-    const joinBtn = document.getElementById("joinBtn");
-    const msgEl = document.getElementById("msg");
+    const joinTripBtn = document.getElementById("joinTripBtn");
+    const scanQrBtn = document.getElementById("scanQrBtn");
     const tripsList = document.getElementById("tripsList");
-    const emptyHint = document.getElementById("emptyHint");
+    const msgEl = document.getElementById("msg");
+    const logoutBtn = document.getElementById("logoutBtn");
 
-    // modal
-    const inviteModal = document.getElementById("inviteModal");
-    const inviteTitle = document.getElementById("inviteTitle");
-    const inviteCodeEl = document.getElementById("inviteCode");
-    const qrBox = document.getElementById("qr");
-    const tabCode = document.getElementById("tabCode");
-    const tabScan = document.getElementById("tabScan");
-    const panelCode = document.getElementById("panelCode");
-    const panelScan = document.getElementById("panelScan");
-    const copyCodeBtn = document.getElementById("copyCodeBtn");
-    const closeInviteBtn = document.getElementById("closeInviteBtn");
-    const closeScanBtn = document.getElementById("closeScanBtn");
-    const cameraSelect = document.getElementById("cameraSelect");
-    const scanErrorEl = document.getElementById("scanError");
-    let html5Qrcode = null;
+    const requestsModal = document.getElementById("requestsModal");
+    const requestsList = document.getElementById("requestsList");
+    const closeRequests = document.getElementById("closeRequests");
+    const scanModal = document.getElementById("scanModal");
+    const closeScan = document.getElementById("closeScan");
 
-    // state
-    let currentUser = null, currentEmailHash = null, currentProfile = null;
-    let lastInvite = null;
-
-    // ===== Helpers =====
-    function showMsg(txt, isErr=false){ msgEl.textContent=txt; msgEl.className="msg "+(isErr?"err":"ok"); }
-    async function sha256Hex(text){ const enc=new TextEncoder().encode(text); const buf=await crypto.subtle.digest("SHA-256",enc); return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join(""); }
-    function genJoinCode(len=6){ const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let s=""; for(let i=0;i<len;i++) s+=chars[Math.floor(Math.random()*chars.length)]; return s; }
-    function openInviteWithCode(title, code){
-      inviteTitle.textContent = title || "Invite members";
-      inviteCodeEl.textContent = code;
-      qrBox.innerHTML = "";
-      new QRCode(qrBox, { text: JSON.stringify({ type:"trip-invite", code }), width: 220, height: 220, colorDark:"#ef4444", colorLight:"#ffffff", correctLevel: QRCode.CorrectLevel.H });
-      // default to Code tab
-      tabCode.classList.add("active"); tabScan.classList.remove("active");
-      panelCode.style.display="block"; panelScan.style.display="none";
-      inviteModal.style.display="flex";
-    }
-    inviteModal.addEventListener("click", (e)=>{ if(e.target===inviteModal) closeInvite(); });
-    function closeInvite(){
-      inviteModal.style.display="none";
-      stopScanner();
-    }
-    closeInviteBtn.onclick = closeInvite;
-    copyCodeBtn.onclick = async ()=>{ try{ await navigator.clipboard.writeText(inviteCodeEl.textContent); showMsg("Code copied!"); }catch{ showMsg("Copy failed", true); } };
-
-    // tab switching
-    tabCode.onclick = ()=>{ tabCode.classList.add("active"); tabScan.classList.remove("active"); panelCode.style.display="block"; panelScan.style.display="none"; stopScanner(); };
-    tabScan.onclick = async ()=>{
-      tabScan.classList.add("active"); tabCode.classList.remove("active");
-      panelScan.style.display="block"; panelCode.style.display="none";
-      await startScanner();
-    };
-
-    // scanner helpers
-    closeScanBtn.onclick = ()=>{ stopScanner(); inviteModal.style.display="none"; };
-    function httpsOrLocal(){
-      return location.protocol==="https:" || ["localhost","127.0.0.1","0.0.0.0"].includes(location.hostname);
-    }
-    async function startScanner(){
-      scanErrorEl.textContent=""; cameraSelect.style.display="none";
-      if (!httpsOrLocal()){ scanErrorEl.textContent="Camera requires HTTPS or http://localhost"; return; }
-      try{
-        const cams = await Html5Qrcode.getCameras();
-        if(!cams || cams.length===0){ scanErrorEl.textContent="No camera found."; return; }
-        if(cams.length>1){
-          cameraSelect.innerHTML="";
-          cams.forEach(c=>{ const o=document.createElement("option"); o.value=c.id; o.textContent=c.label||c.id; cameraSelect.appendChild(o); });
-          cameraSelect.style.display="block";
-        }
-        html5Qrcode = new Html5Qrcode("reader");
-        const cfg={fps:10,qrbox:220}; const chosen=cameraSelect.value||cams[0].id;
-        await html5Qrcode.start({deviceId:{exact:chosen}}, cfg, onScanText);
-        cameraSelect.onchange = async ()=>{
-          await html5Qrcode.stop();
-          await html5Qrcode.start({deviceId:{exact:cameraSelect.value}}, cfg, onScanText);
-        };
-      }catch(err){ console.error(err); scanErrorEl.textContent="Cannot start camera: "+(err&&err.message||err); }
-    }
-    function stopScanner(){ if(html5Qrcode){ const r=html5Qrcode; html5Qrcode=null; return r.stop().catch(()=>{}).finally(()=>{ try{r.clear();}catch{} }); } }
-    async function onScanText(text){
-      try{
-        const obj = JSON.parse(text);
-        if (obj && obj.type==="trip-invite" && obj.code){
-          closeInvite();
-          await joinByCode(obj.code);
-          return;
-        }
-      }catch(_){}
-      const plain = (text||"").trim().toUpperCase();
-      if(/^[A-Z0-9]{4,10}$/.test(plain)){ closeInvite(); await joinByCode(plain); }
-    }
-
-    // ===== Strong access guard (no anonymous fallback) =====
-    async function ensureLoggedIn(){
-      return new Promise((resolve)=>{
-        guardEl.style.display="block"; appEl.style.display="none";
-        auth.onAuthStateChanged(async (u)=>{
-          if(!u){ location.replace("index.html?next=trips.html"); return; }
-          try{
-            const link = await db.collection("authLinks").doc(u.uid).get();
-            if(!link.exists || !link.data().emailHash){ location.replace("index.html?next=trips.html"); return; }
-            currentUser = u;
-            currentEmailHash = link.data().emailHash;
-            const prof = await db.collection("profiles").doc(currentEmailHash).get();
-            if(!prof.exists){ location.replace("index.html?next=trips.html"); return; }
-            currentProfile = prof.data();
-            whoEl.textContent = (currentProfile.name || "User") + (currentProfile.email? ` • ${currentProfile.email}` : "");
-            guardEl.style.display="none"; appEl.style.display="block";
-            resolve();
-          }catch(e){ console.error(e); location.replace("index.html?next=trips.html"); }
-        });
-      });
-    }
-    logoutBtn.onclick = async ()=>{ try{ await auth.signOut(); } finally { location.replace("index.html"); } };
-
-    // ===== My Trips via /userTrips index =====
-    async function fetchMyTripsFromIndex(uid){
-      const rows = [];
-      const idxSnap = await db.collection("userTrips").doc(uid).collection("trips").orderBy("joinedAt","desc").get();
-      for (const doc of idxSnap.docs){
-        const tripId = doc.id;
-        const [tSnap, mSnap] = await Promise.all([
-          db.collection("trips").doc(tripId).get(),
-          db.collection("trips").doc(tripId).collection("members").get()
-        ]);
-        if (!tSnap.exists) continue;
-        rows.push({
-          id: tripId,
-          data: tSnap.data(),
-          members: mSnap.docs.map(d=>({ id:d.id, ...d.data() })),
-          role: doc.data().role || "member"
-        });
-      }
-      return rows;
-    }
-
-    function renderTrips(rows){
-      tripsList.innerHTML = "";
-      if (!rows.length){ emptyHint.style.display="block"; return; }
-      emptyHint.style.display="none";
-
-      rows.forEach(t=>{
-        const names = t.members.map(m=>m.displayName||"Anon").join(", ");
-        const el = document.createElement("div");
-        el.className = "trip";
-        el.innerHTML = `
-          <div>
-            <div class="name" data-open="${t.id}" style="cursor:pointer;text-decoration:underline">
-              ${t.data.name || "Trip"} <span class="muted">(${t.role})</span>
-            </div>
-            <div class="muted">Code: ${t.data.joinCodePlain || "—"}</div>
-            <div class="muted">Members: ${names || "—"}</div>
-          </div>
-          <div class="row">
-            <button class="btn" data-invite="${t.id}">Add Member</button>
-            <button class="btn primary" data-open="${t.id}">Open Map</button>
-          </div>`;
-        tripsList.appendChild(el);
-      });
-
-      // open map
-      document.querySelectorAll('[data-open]').forEach(b=>{
-        b.onclick = ()=> location.href = `map.html?tripId=${b.getAttribute('data-open')}`;
-      });
-
-      // invite (show code + QR of this trip)
-      document.querySelectorAll('button[data-invite]').forEach(btn=>{
-        btn.onclick = async ()=>{
-          const tripId = btn.getAttribute('data-invite');
-          const t = await db.collection("trips").doc(tripId).get();
-          const code = t.exists ? (t.data().joinCodePlain || "") : "";
-          if(!code){ showMsg("This trip has no code yet.", true); return; }
-          lastInvite = { tripId, code };
-          openInviteWithCode("Invite to "+(t.data().name||"Trip"), code);
-        };
-      });
-    }
-
-    function attachRealtimeIndex(uid){
-      db.collection("userTrips").doc(uid).collection("trips")
-        .orderBy("joinedAt","desc")
-        .onSnapshot(async snap=>{
-          const rows = [];
-          for (const d of snap.docs){
-            const tripId = d.id;
-            const [tSnap, mSnap] = await Promise.all([
-              db.collection("trips").doc(tripId).get(),
-              db.collection("trips").doc(tripId).collection("members").get()
-            ]);
-            if(!tSnap.exists) continue;
-            rows.push({
-              id: tripId,
-              data: tSnap.data(),
-              members: mSnap.docs.map(x=>({ id:x.id, ...x.data() })),
-              role: d.data().role || "member"
-            });
-          }
-          renderTrips(rows);
-        }, err => {
-          showMsg("Realtime index error: "+(err && err.message || err), true);
-          console.error(err);
-        });
-    }
-
-    // ===== Create Trip (stores joinCodePlain, writes phone on membership) =====
-    createBtn.addEventListener("click", async ()=>{
-      const name = tripNameEl.value.trim();
-      if(!name){ showMsg("Enter trip name", true); return; }
-      if(!currentUser){ showMsg("Not signed in", true); return; }
-
-      const displayName = (currentProfile && currentProfile.name) ? currentProfile.name : "Anon";
-      const phone = (currentProfile && currentProfile.phone) ? String(currentProfile.phone) : "";
-      const joinCode = genJoinCode();
-      const joinCodeHash = await sha256Hex(joinCode);
-      const tripId = db.collection("trips").doc().id;
-
-      try{
-        // trip (now includes joinCodePlain)
-        await db.collection("trips").doc(tripId).set({
-          name,
-          createdBy: currentUser.uid,
-          isActive: true,
-          joinCodeHash,
-          joinCodePlain: joinCode,       // <— store human code
-          allowNewJoins: true,
-          memberUids: [currentUser.uid],
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        // join index
-        await db.collection("joinCodes").doc(joinCodeHash).set({
-          tripId, isActive:true, allowNewJoins:true,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        // membership (with phone)
-        const memRef = db.collection("trips").doc(tripId).collection("members").doc(currentUser.uid);
-        await memRef.set({
-          uid: currentUser.uid,
-          role:"admin",
-          displayName,
-          phone,                            // <— phone saved
-          shareEnabled:false,
-          joinedAt: firebase.firestore.FieldValue.serverTimestamp(),
-          createdBy: currentUser.uid,
-          codeHash: joinCodeHash
-        });
-        await memRef.update({codeHash: firebase.firestore.FieldValue.delete()});
-        // userTrips index
-        await db.collection("userTrips").doc(currentUser.uid).collection("trips").doc(tripId).set({
-          role: "admin",
-          joinedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        tripNameEl.value = "";
-        lastInvite = { tripId, code: joinCode };
-        openInviteWithCode("Invite to "+name, joinCode);
-        showMsg("Trip created!");
-        renderTrips(await fetchMyTripsFromIndex(currentUser.uid));
-
-      }catch(e){ console.error(e); showMsg("Error creating trip: "+e.message, true); }
-    });
-
-    showLastInviteBtn.addEventListener("click", async ()=>{
-      if(!lastInvite){ showMsg("No recent invite. Create a trip first.", true); return; }
-      openInviteWithCode("Invite", lastInvite.code);
-    });
-
-    // ===== Join by code (also used by scanner) — writes phone on membership =====
-    joinBtn.addEventListener("click", ()=> joinByCode(joinCodeEl.value));
-    async function joinByCode(plain){
-      const code=(plain||"").trim().toUpperCase(); if(!code){ showMsg("Enter join code", true); return; }
-      if(!currentUser){ showMsg("Not signed in", true); return; }
-
-      const displayName = (currentProfile && currentProfile.name) ? currentProfile.name : "Anon";
-      const phone = (currentProfile && currentProfile.phone) ? String(currentProfile.phone) : "";
-
-      try{
-        const codeHash = await sha256Hex(code);
-        const j = await db.collection("joinCodes").doc(codeHash).get();
-        if(!j.exists || !j.data().isActive || !j.data().allowNewJoins){ showMsg("Invalid or closed code.", true); return; }
-        const tripId=j.data().tripId;
-
-        // create my member doc (with phone)
-        const memRef = db.collection("trips").doc(tripId).collection("members").doc(currentUser.uid);
-        await memRef.set({
-          uid: currentUser.uid,
-          role:"member",
-          displayName,
-          phone,                            // <— phone saved
-          shareEnabled:false,
-          joinedAt: firebase.firestore.FieldValue.serverTimestamp(),
-          createdBy: currentUser.uid,
-          codeHash: codeHash
-        });
-        await memRef.update({codeHash: firebase.firestore.FieldValue.delete()});
-        // add to userTrips index
-        await db.collection("userTrips").doc(currentUser.uid).collection("trips").doc(tripId).set({
-          role: "member",
-          joinedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        showMsg("Joined trip!");
-        joinCodeEl.value="";
-        renderTrips(await fetchMyTripsFromIndex(currentUser.uid));
-
-      }catch(e){ console.error(e); showMsg("Error joining trip: "+e.message, true); }
-    }
-
-    // ===== Global Scan button opens scanner-only modal =====
-    scanBtn.onclick = async ()=>{
-      inviteTitle.textContent = "Scan to Join";
-      tabScan.classList.add("active"); tabCode.classList.remove("active");
-      panelScan.style.display="block"; panelCode.style.display="none";
-      inviteModal.style.display="flex";
-      await startScanner();
-    };
+    function showMsg(t,isErr=false){ msgEl.textContent=t; msgEl.className="msg "+(isErr?"err":"ok"); }
 
     // ===== Boot =====
-    (async ()=>{
-      await ensureLoggedIn();               // redirects to index.html if not fully logged in
-      renderTrips(await fetchMyTripsFromIndex(currentUser.uid));
-      attachRealtimeIndex(currentUser.uid);
-    })();
+    auth.onAuthStateChanged(async (u)=>{
+      if(!u){ location.replace("index.html"); return; }
+      // hide modals at start
+      requestsModal.classList.add("hidden");
+      scanModal.classList.add("hidden");
+      loadTrips();
+    });
+
+    // ===== Trips =====
+    async function loadTrips(){
+      tripsList.innerHTML="";
+      const me = auth.currentUser;
+      const snap = await db.collectionGroup("members").where("uid","==",me.uid).get();
+      if(snap.empty){ tripsList.textContent="No trips yet"; return; }
+      for(const d of snap.docs){
+        const tripId = d.ref.parent.parent.id;
+        const t = await db.collection("trips").doc(tripId).get();
+        if(!t.exists) continue;
+        const el = document.createElement("div");
+        el.className="trip";
+        el.textContent = t.data().name+" ("+tripId+")";
+        el.onclick=()=>{ location.href="map.html?tripId="+tripId; };
+        tripsList.appendChild(el);
+      }
+    }
+
+    // ===== Create Trip =====
+    createTripBtn.onclick = async ()=>{
+      const name = tripNameEl.value.trim();
+      if(!name){ showMsg("Enter trip name",true); return; }
+      try{
+        const code = Math.random().toString(36).substr(2,6).toUpperCase();
+        const codeHash = await sha256Hex(code);
+        const me = auth.currentUser;
+        const tripRef = db.collection("trips").doc();
+        await tripRef.set({
+          name, createdBy:me.uid, isActive:true,
+          joinCodePlain:code, joinCodeHash:codeHash,
+          memberUids:[me.uid], allowNewJoins:true,
+          createdAt:firebase.firestore.FieldValue.serverTimestamp()
+        });
+        await tripRef.collection("members").doc(me.uid).set({
+          uid:me.uid, role:"admin", displayName:"Me",
+          shareEnabled:true, joinedAt:firebase.firestore.FieldValue.serverTimestamp(),
+          createdBy:me.uid
+        });
+        await db.collection("joinCodes").doc(codeHash).set({ tripId:tripRef.id, isActive:true, allowNewJoins:true });
+        showMsg("Trip created! Code: "+code);
+        loadTrips();
+      }catch(e){ showMsg("Error creating trip: "+e.message,true); }
+    };
+
+    // ===== Join Trip =====
+    joinTripBtn.onclick = async ()=>{
+      const code = joinCodeEl.value.trim();
+      if(!code){ showMsg("Enter code",true); return; }
+      const codeHash = await sha256Hex(code);
+      try{
+        const jc = await db.collection("joinCodes").doc(codeHash).get();
+        if(!jc.exists){ showMsg("Invalid code",true); return; }
+        const tripId = jc.data().tripId;
+        const me = auth.currentUser;
+        // create join request doc
+        await db.collection("trips").doc(tripId).collection("joinRequests").doc(me.uid).set({
+          uid:me.uid, displayName:"Me", createdAt:firebase.firestore.FieldValue.serverTimestamp()
+        });
+        showMsg("Request sent. Awaiting admin approval.");
+      }catch(e){ showMsg("Error joining: "+e.message,true); }
+    };
+
+    // ===== Logout =====
+    logoutBtn.onclick = ()=> auth.signOut();
+
+    // ===== Helpers =====
+    async function sha256Hex(txt){
+      const enc=new TextEncoder().encode(txt);
+      const buf=await crypto.subtle.digest("SHA-256",enc);
+      return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+    }
+
+    // ===== Close modals =====
+    closeRequests.onclick = ()=> requestsModal.classList.add("hidden");
+    closeScan.onclick = ()=> scanModal.classList.add("hidden");
   </script>
 </body>
 </html>
