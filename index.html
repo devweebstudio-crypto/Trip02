@@ -24,16 +24,16 @@
 
     <!-- Step 1: Email & OTP -->
     <div id="stepEmail">
-      <input id="email" placeholder="Email" type="email" autocomplete="email"/>
+      <input id="email" placeholder="Email" type="email"/>
       <button id="sendOtpBtn">Send OTP</button>
-      <input id="otp" placeholder="Enter OTP" class="hidden" inputmode="numeric" autocomplete="one-time-code"/>
+      <input id="otp" placeholder="Enter OTP" class="hidden"/>
       <button id="verifyOtpBtn" class="hidden">Verify OTP</button>
     </div>
 
     <!-- Step 2: Profile (name + phone) -->
     <div id="stepProfile" class="hidden">
-      <input id="name" placeholder="Full Name" autocomplete="name"/>
-      <input id="phone" placeholder="Contact Number" type="tel" autocomplete="tel"/>
+      <input id="name" placeholder="Full Name"/>
+      <input id="phone" placeholder="Contact Number" type="tel"/>
       <button id="saveProfileBtn">Save & Continue</button>
     </div>
 
@@ -59,9 +59,6 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // Persist sessions across reload/close
-    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(console.error);
-
     // ===== OTP API URL =====
     const OTP_API = "https://script.google.com/macros/s/AKfycbxDNRfdy9Ux1pjLP3bIrUuiyamnXo4N2HTV9wuaczaFWUC5Ea9RygVlPBg9c0amL4LtFQ/exec";
 
@@ -83,34 +80,20 @@
     function showMsg(t,isErr=false){ msgEl.textContent=t; msgEl.className="msg "+(isErr?"err":"ok"); }
     async function sha256Hex(txt){ const enc=new TextEncoder().encode(txt); const buf=await crypto.subtle.digest("SHA-256",enc); return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join(""); }
 
-    // Generate a per-browser deviceId (for session tracking)
-    function getDeviceId(){
-      const key = "deviceId";
-      let id = localStorage.getItem(key);
-      if(!id){ id = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2); localStorage.setItem(key,id); }
-      return id;
-    }
-    const deviceId = getDeviceId();
-
-    // ===== Auto-redirect if already signed-in with profile =====
+    // ===== Auto-login if already signed in =====
     auth.onAuthStateChanged(async (u)=>{
-      try{
-        if(!u) return; // show login UI
-        // See if this user linked to an emailHash and has a profile → go to trips
-        const link = await db.collection("authLinks").doc(u.uid).get();
-        if(link.exists && link.data().emailHash){
-          const p = await db.collection("profiles").doc(link.data().emailHash).get();
-          if(p.exists){
-            // attach single-session watcher; then go
-            await attachSingleSession(link.data().emailHash, u.uid);
-            const next = new URLSearchParams(location.search).get("next") || "trips.html";
-            location.href = next;
+      if(u){
+        const storedEmailHash = localStorage.getItem("tripapp_emailHash");
+        if(storedEmailHash){
+          const profSnap = await db.collection("profiles").doc(storedEmailHash).get();
+          if(profSnap.exists && profSnap.data().activeUid===u.uid){
+            location.href = "trips.html";
           }
         }
-      }catch(e){ console.warn(e); }
+      }
     });
 
-    // ===== OTP Flow (JSONP) =====
+    // ===== OTP Flow =====
     sendOtpBtn.onclick = ()=>{
       const email = emailEl.value.trim();
       if(!email){ showMsg("Enter email", true); return; }
@@ -120,11 +103,8 @@
       document.body.appendChild(script);
     };
     window.onOtpSent = (res)=>{
-      if(res.ok){
-        showMsg("OTP sent to email.");
-        otpEl.classList.remove("hidden");
-        verifyOtpBtn.classList.remove("hidden");
-      } else showMsg(res.message || "Failed to send OTP", true);
+      if(res.ok){ showMsg("OTP sent to email."); otpEl.classList.remove("hidden"); verifyOtpBtn.classList.remove("hidden"); }
+      else showMsg(res.message, true);
     };
 
     verifyOtpBtn.onclick = ()=>{
@@ -137,103 +117,57 @@
       document.body.appendChild(script);
     };
 
-    // After OTP success → sign in anon → link auth → prefill profile → show profile step
     window.onOtpVerified = async (res)=>{
-      try{
-        if(!res.ok){ showMsg(res.message || "Invalid OTP", true); return; }
-        const email = res.data.email.trim().toLowerCase();
-        const emailHash = await sha256Hex(email);
+      if(!res.ok){ showMsg(res.message, true); return; }
+      const email = res.data.email;
+      const emailHash = await sha256Hex(email.toLowerCase());
 
-        if(!auth.currentUser){ await auth.signInAnonymously(); }
-        const uid = auth.currentUser.uid;
+      // sign in anon if not already
+      if(!auth.currentUser){ await auth.signInAnonymously(); }
+      const uid = auth.currentUser.uid;
 
-        await db.collection("authLinks").doc(uid).set({ emailHash });
+      // link auth to emailHash
+      await db.collection("authLinks").doc(uid).set({ emailHash });
 
-        // Prefill profile if exists
-        const profSnap = await db.collection("profiles").doc(emailHash).get();
-        if(profSnap.exists){
-          const p = profSnap.data();
-          nameEl.value = p.name || "";
-          phoneEl.value = p.phone || "";
-        }
+      // ✅ Immediately claim active session (single device enforcement)
+      await db.collection("profiles").doc(emailHash).set({
+        activeUid: uid,
+        deviceLabel: navigator.platform+" "+navigator.userAgent,
+        email,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge:true });
 
-        // Show profile form
-        stepEmail.classList.add("hidden");
-        stepProfile.classList.remove("hidden");
-        showMsg("OTP verified! Please complete profile.");
-      }catch(e){
-        console.error(e);
-        showMsg(e.message || String(e), true);
+      // Save locally
+      localStorage.setItem("tripapp_emailHash", emailHash);
+      localStorage.setItem("tripapp_logged_in","1");
+
+      // Prefill profile if exists
+      const profSnap = await db.collection("profiles").doc(emailHash).get();
+      if(profSnap.exists){
+        const p = profSnap.data();
+        nameEl.value = p.name || "";
+        phoneEl.value = p.phone || "";
       }
+
+      stepEmail.classList.add("hidden");
+      stepProfile.classList.remove("hidden");
+      showMsg("OTP verified! Please complete profile.");
     };
 
-    // ===== Save Profile + single-session claim + go to trips =====
+    // ===== Save Profile =====
     saveProfileBtn.onclick = async ()=>{
-      try{
-        const name = nameEl.value.trim();
-        const phone = phoneEl.value.trim();
-        const email = emailEl.value.trim().toLowerCase();
-        if(!name || !phone){ showMsg("Enter name + phone", true); return; }
+      const name = nameEl.value.trim();
+      const phone = phoneEl.value.trim();
+      const email = emailEl.value.trim().toLowerCase();
+      if(!name || !phone){ showMsg("Enter name + phone", true); return; }
+      const emailHash = await sha256Hex(email);
 
-        const emailHash = await sha256Hex(email);
-        // store profile
-        await db.collection("profiles").doc(emailHash).set({ email, name, phone }, { merge:true });
+      await db.collection("profiles").doc(emailHash).set({ email, name, phone }, { merge:true });
+      showMsg("Profile saved!");
 
-        // claim single active session for this emailHash
-        await attachSingleSession(emailHash, auth.currentUser.uid, true);
-
-        showMsg("Profile saved!");
-        const next = new URLSearchParams(location.search).get("next") || "trips.html";
-        location.href = next;
-      }catch(e){
-        console.error(e);
-        showMsg(e.message || String(e), true);
-      }
+      // go to trips
+      location.href = "trips.html";
     };
-
-    // ===== Single active login per email =====
-    // We use /sessions/{emailHash} with { uid, deviceId, updatedAt }.
-    // - When this device claims it, others see change via onSnapshot and sign out.
-    // - We also keep a small heartbeat so stale sessions show activity.
-    let sessionUnsub = null;
-    async function attachSingleSession(emailHash, uid, claimNow=false){
-      const sessRef = db.collection("sessions").doc(emailHash);
-
-      if (claimNow){
-        // Claim / overwrite with my uid+device
-        await sessRef.set({
-          uid, deviceId,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      }
-
-      // Watch for someone else taking over
-      if(sessionUnsub) sessionUnsub();
-      sessionUnsub = sessRef.onSnapshot(snap=>{
-        const d = snap.data();
-        if(!d) return;
-        if(d.uid && d.uid !== uid){
-          // Another device/session claimed this email → sign out here
-          alert("You have been signed out because your account was opened on another device.");
-          auth.signOut().finally(()=> location.href = "index.html");
-        }
-      });
-
-      // Heartbeat: update timestamp every ~30s so you can monitor actives if needed
-      setInterval(()=>{
-        sessRef.set({ uid, deviceId, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true })
-          .catch(()=>{});
-      }, 30000);
-    }
-
-    // Optional: on unload, you could clear the session if you want strict logout-on-close
-    // window.addEventListener("beforeunload", ()=>{
-    //   const u = auth.currentUser; if(!u) return;
-    //   db.collection("authLinks").doc(u.uid).get().then(doc=>{
-    //     const emailHash = doc.exists ? doc.data().emailHash : null;
-    //     if(emailHash) db.collection("sessions").doc(emailHash).delete().catch(()=>{});
-    //   });
-    // });
   </script>
 </body>
 </html>
