@@ -1,173 +1,1221 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Trip App – Login</title>
-  <style>
-    body{font-family:system-ui,Arial;background:#0f172a;color:#e5e7eb;margin:0;display:flex;align-items:center;justify-content:center;height:100vh}
-    .card{background:#111827;border:1px solid #2d3748;padding:24px;border-radius:16px;max-width:360px;width:100%}
-    h1{margin-top:0;font-size:22px;text-align:center}
-    input,button{width:100%;padding:10px;margin-top:10px;border-radius:12px;font-size:14px}
-    input{border:1px solid #374151;background:#0b1220;color:#e5e7eb}
-    input:focus{outline:2px solid #3b82f6}
-    button{border:none;background:#2563eb;color:#fff;cursor:pointer}
-    button:disabled{opacity:.5;cursor:default}
-    .msg{margin-top:10px;font-size:14px}
-    .ok{color:#86efac}.err{color:#fecaca}
-    .hidden{display:none}
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Products - Our Store</title>
+    <link rel="icon" type="image/x-icon" href="logo.ico">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #1e40af;
+            --accent-color: #3b82f6;
+            --light-color: #f8fafc;
+            --dark-color: #1e293b;
+            --gray-color: #64748b;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --radius: 8px;
+        }
+
+        body {
+            background-color: #f1f5f9;
+            color: var(--dark-color);
+            line-height: 1.6;
+        }
+
+        /* Header & Navigation */
+        header {
+            background: white;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .logo img {
+            height: 40px;
+            width: auto;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--dark-color);
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            transition: all 0.3s ease;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .cart-icon {
+            position: relative;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .cart-count {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background-color: var(--danger-color);
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        /* Category Filter */
+        .category-filter {
+            background: white;
+            padding: 1.5rem;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 2rem;
+        }
+
+        .category-filter h2 {
+            margin-bottom: 1rem;
+            color: var(--dark-color);
+        }
+
+        .category-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .cat-btn {
+            padding: 0.5rem 1.5rem;
+            background: var(--light-color);
+            border: 2px solid #e2e8f0;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .cat-btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .cat-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        /* Products Grid */
+        .products-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .products-header h2 {
+            color: var(--dark-color);
+        }
+
+        .sort-select {
+            padding: 0.5rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: var(--radius);
+            background: white;
+            font-weight: 500;
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .product-card {
+            background: white;
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+        }
+
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .product-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            background: #f1f5f9;
+        }
+
+        .product-info {
+            padding: 1.5rem;
+        }
+
+        .product-info h3 {
+            margin-bottom: 0.5rem;
+            color: var(--dark-color);
+            font-size: 1.1rem;
+        }
+
+        .product-company {
+            color: var(--gray-color);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .product-spec {
+            color: var(--gray-color);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .product-price {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        .product-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn {
+            padding: 0.6rem 1.2rem;
+            border: none;
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            flex: 1;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--secondary-color);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .btn-outline:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* Product Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            background: white;
+            margin: 2rem auto;
+            max-width: 900px;
+            width: 90%;
+            border-radius: var(--radius);
+            animation: modalSlide 0.3s ease;
+        }
+
+        @keyframes modalSlide {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            color: var(--dark-color);
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--gray-color);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .modal-image {
+            width: 100%;
+            max-height: 400px;
+            object-fit: contain;
+            border-radius: var(--radius);
+            background: #f1f5f9;
+        }
+
+        .modal-details h3 {
+            margin-bottom: 0.5rem;
+            color: var(--dark-color);
+        }
+
+        .modal-price {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            font-weight: bold;
+            margin: 1rem 0;
+        }
+
+        .spec-list {
+            list-style: none;
+            margin: 1rem 0;
+        }
+
+        .spec-list li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #0da271;
+        }
+
+        /* Related Products */
+        .related-products {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .related-products h3 {
+            margin-bottom: 1rem;
+            color: var(--dark-color);
+        }
+
+        .related-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .related-item {
+            background: var(--light-color);
+            padding: 1rem;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .related-item:hover {
+            background: #e2e8f0;
+        }
+
+        /* Cart Sidebar */
+        .cart-sidebar {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100%;
+            background: white;
+            box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+            transition: right 0.3s ease;
+            z-index: 1001;
+            overflow-y: auto;
+        }
+
+        .cart-sidebar.active {
+            right: 0;
+        }
+
+        .cart-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .cart-items {
+            padding: 1.5rem;
+        }
+
+        .cart-item {
+            display: flex;
+            gap: 1rem;
+            padding: 1rem 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .cart-item-image {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: var(--radius);
+        }
+
+        .cart-item-details {
+            flex: 1;
+        }
+
+        .cart-item-title {
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .cart-item-price {
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        .cart-quantity {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .quantity-btn {
+            width: 25px;
+            height: 25px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .cart-footer {
+            padding: 1.5rem;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .cart-total {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--dark-color);
+            color: white;
+            padding: 3rem 2rem;
+            margin-top: 4rem;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+        }
+
+        .footer-section h3 {
+            margin-bottom: 1rem;
+            color: white;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .navbar {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .nav-links {
+                gap: 1rem;
+            }
+
+            .modal-body {
+                grid-template-columns: 1fr;
+            }
+
+            .cart-sidebar {
+                width: 100%;
+                right: -100%;
+            }
+
+            .products-grid {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            }
+        }
+
+        @media (max-width: 480px) {
+            .products-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .category-buttons {
+                justify-content: center;
+            }
+
+            .modal-content {
+                width: 95%;
+                margin: 1rem auto;
+            }
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--gray-color);
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Login</h1>
+    <!-- Header -->
+    <header>
+        <nav class="navbar">
+            <a href="index.html" class="logo">
+                <img src="logo.png" alt="Store Logo">
+                <span>Our Store</span>
+            </a>
+            
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="product.html" class="active">Products</a></li>
+                <li><a href="Franchaise.html">Ask for Franchise</a></li>
+            </ul>
+            
+            <div class="cart-icon" onclick="toggleCart()">
+                🛒
+                <span class="cart-count">0</span>
+            </div>
+        </nav>
+    </header>
 
-    <!-- Step 1: Email & OTP -->
-    <div id="stepEmail">
-      <input id="email" placeholder="Email" type="email"/>
-      <button id="sendOtpBtn">Send OTP</button>
-      <input id="otp" placeholder="Enter OTP" class="hidden"/>
-      <button id="verifyOtpBtn" class="hidden">Verify OTP</button>
+    <!-- Cart Sidebar -->
+    <div class="cart-sidebar">
+        <div class="cart-header">
+            <h2>Your Cart</h2>
+            <button onclick="toggleCart()" class="close-modal">&times;</button>
+        </div>
+        <div class="cart-items" id="cartItems">
+            <!-- Cart items will be added here dynamically -->
+            <div class="loading">Cart is empty</div>
+        </div>
+        <div class="cart-footer">
+            <div class="cart-total">
+                <span>Total:</span>
+                <span id="cartTotal">₹0.00</span>
+            </div>
+            <button class="btn btn-primary" style="width: 100%;" onclick="sendWhatsAppEnquiry()">
+                Buy Now / Enquiry
+            </button>
+        </div>
     </div>
 
-    <!-- Step 2: Profile (name + phone) -->
-    <div id="stepProfile" class="hidden">
-      <input id="name" placeholder="Full Name"/>
-      <input id="phone" placeholder="Contact Number" type="tel"/>
-      <button id="saveProfileBtn">Save & Continue</button>
+    <!-- Main Content -->
+    <main class="container">
+        <!-- Category Filter -->
+        <section class="category-filter">
+            <h2>Browse Categories</h2>
+            <div class="category-buttons" id="categoryButtons">
+                <button class="cat-btn active" data-category="all">All Products</button>
+                <!-- Categories will be loaded here -->
+            </div>
+        </section>
+
+        <!-- Products Section -->
+        <section class="products-section">
+            <div class="products-header">
+                <h2 id="categoryTitle">All Products</h2>
+                <select class="sort-select" onchange="sortProducts(this.value)">
+                    <option value="newest">Newest First</option>
+                    <option value="price_low">Price: Low to High</option>
+                    <option value="price_high">Price: High to Low</option>
+                    <option value="name">Name: A to Z</option>
+                </select>
+            </div>
+
+            <div class="products-grid" id="productsGrid">
+                <!-- Products will be loaded here -->
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading products...</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Product Detail Modal -->
+    <div class="modal" id="productModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Product Details</h2>
+                <button class="close-modal" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div>
+                    <img id="modalImage" src="" alt="Product Image" class="modal-image">
+                </div>
+                <div class="modal-details">
+                    <h3 id="modalProductName"></h3>
+                    <p id="modalCompany" class="product-company"></p>
+                    <div class="modal-price" id="modalPrice"></div>
+                    
+                    <h4>Specifications:</h4>
+                    <ul class="spec-list" id="modalSpecs"></ul>
+                    
+                    <h4>Additional Details:</h4>
+                    <div id="modalAdditional"></div>
+                    
+                    <div class="modal-actions">
+                        <button class="btn btn-primary" onclick="addToCartFromModal()">Add to Cart</button>
+                        <button class="btn btn-success" onclick="buyNow()">Buy Now</button>
+                    </div>
+                </div>
+            </div>
+            <div class="related-products">
+                <h3>Related Products</h3>
+                <div class="related-grid" id="relatedProducts">
+                    <!-- Related products will be loaded here -->
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div id="msg" class="msg"></div>
-  </div>
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>Our Store</h3>
+                <p>Quality products at affordable prices. Your satisfaction is our priority.</p>
+            </div>
+            <div class="footer-section">
+                <h3>Contact Us</h3>
+                <p>Email: info@ourstore.com</p>
+                <p>Phone: +91 9511864107</p>
+            </div>
+            <div class="footer-section">
+                <h3>Quick Links</h3>
+                <p><a href="index.html" style="color: white;">Home</a></p>
+                <p><a href="product.html" style="color: white;">Products</a></p>
+                <p><a href="Franchaise.html" style="color: white;">Franchise</a></p>
+            </div>
+        </div>
+    </footer>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script>
+        // Supabase Configuration
+        const SUPABASE_URL = 'https://ntddmjuylgblxxushzcf.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50ZGRtanV5bGdibHh4dXNoemNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQzNTI5OTgsImV4cCI6MjA0OTkyODk5OH0.QBME0vK_tzA-7vblSmUzI57qZbQqoP7wwGjHfS8mDzY';
+        
+        // Initialize cart
+        let cart = JSON.parse(localStorage.getItem('cart')) || [];
+        let products = [];
+        let categories = [];
+        let currentCategory = 'all';
 
-  <script>
-    // ===== Firebase init =====
-    const firebaseConfig = {
-      apiKey: "AIzaSyB529yOEmk9sDDcUiD5tkyCRsmJpvOn66s",
-      authDomain: "tripapp-27b4f.firebaseapp.com",
-      projectId: "tripapp-27b4f",
-      storageBucket: "tripapp-27b4f.firebasestorage.app",
-      messagingSenderId: "796205117191",
-      appId: "1:796205117191:web:30507cc680c3b630b51fa2"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+        // DOM Elements
+        const productsGrid = document.getElementById('productsGrid');
+        const categoryButtons = document.getElementById('categoryButtons');
+        const cartCount = document.querySelector('.cart-count');
+        const cartItems = document.getElementById('cartItems');
+        const cartTotal = document.getElementById('cartTotal');
 
-    // ===== OTP API URL =====
-    const OTP_API = "https://script.google.com/macros/s/AKfycbxDNRfdy9Ux1pjLP3bIrUuiyamnXo4N2HTV9wuaczaFWUC5Ea9RygVlPBg9c0amL4LtFQ/exec";
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCategories();
+            loadProducts();
+            updateCartDisplay();
+        });
 
-    // ===== UI refs =====
-    const emailEl = document.getElementById("email");
-    const otpEl = document.getElementById("otp");
-    const sendOtpBtn = document.getElementById("sendOtpBtn");
-    const verifyOtpBtn = document.getElementById("verifyOtpBtn");
-    const stepEmail = document.getElementById("stepEmail");
-
-    const stepProfile = document.getElementById("stepProfile");
-    const nameEl = document.getElementById("name");
-    const phoneEl = document.getElementById("phone");
-    const saveProfileBtn = document.getElementById("saveProfileBtn");
-
-    const msgEl = document.getElementById("msg");
-
-    // ===== Helpers =====
-    function showMsg(t,isErr=false){ msgEl.textContent=t; msgEl.className="msg "+(isErr?"err":"ok"); }
-    async function sha256Hex(txt){ const enc=new TextEncoder().encode(txt); const buf=await crypto.subtle.digest("SHA-256",enc); return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join(""); }
-
-    // ===== Auto-login if already signed in =====
-    auth.onAuthStateChanged(async (u)=>{
-      if(u){
-        const storedEmailHash = localStorage.getItem("tripapp_emailHash");
-        if(storedEmailHash){
-          const profSnap = await db.collection("profiles").doc(storedEmailHash).get();
-          if(profSnap.exists && profSnap.data().activeUid===u.uid){
-            location.href = "trips.html";
-          }
+        // Load Categories from Supabase
+        async function loadCategories() {
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/categories?select=*`, {
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`
+                    }
+                });
+                
+                if (!response.ok) throw new Error('Failed to load categories');
+                
+                categories = await response.json();
+                renderCategories();
+            } catch (error) {
+                console.error('Error loading categories:', error);
+                // Use default categories if API fails
+                categories = [
+                    { id: 1, category_name: 'Electronics' },
+                    { id: 2, category_name: 'Clothing' },
+                    { id: 3, category_name: 'Home & Kitchen' },
+                    { id: 4, category_name: 'Books' },
+                    { id: 5, category_name: 'Sports' }
+                ];
+                renderCategories();
+            }
         }
-      }
-    });
 
-    // ===== OTP Flow =====
-    sendOtpBtn.onclick = ()=>{
-      const email = emailEl.value.trim();
-      if(!email){ showMsg("Enter email", true); return; }
-      showMsg("Sending OTP…");
-      const script = document.createElement("script");
-      script.src = `${OTP_API}?action=sendOtp&email=${encodeURIComponent(email)}&callback=onOtpSent`;
-      document.body.appendChild(script);
-    };
-    window.onOtpSent = (res)=>{
-      if(res.ok){ showMsg("OTP sent to email."); otpEl.classList.remove("hidden"); verifyOtpBtn.classList.remove("hidden"); }
-      else showMsg(res.message, true);
-    };
+        // Render Categories as buttons
+        function renderCategories() {
+            categoryButtons.innerHTML = `
+                <button class="cat-btn active" data-category="all" onclick="filterByCategory('all')">
+                    All Products
+                </button>
+            `;
+            
+            categories.forEach(category => {
+                const button = document.createElement('button');
+                button.className = 'cat-btn';
+                button.dataset.category = category.id;
+                button.textContent = category.category_name;
+                button.onclick = () => filterByCategory(category.id);
+                categoryButtons.appendChild(button);
+            });
+        }
 
-    verifyOtpBtn.onclick = ()=>{
-      const email = emailEl.value.trim();
-      const otp = otpEl.value.trim();
-      if(!email||!otp){ showMsg("Enter email + OTP", true); return; }
-      showMsg("Verifying…");
-      const script = document.createElement("script");
-      script.src = `${OTP_API}?action=verifyOtp&email=${encodeURIComponent(email)}&otp=${encodeURIComponent(otp)}&callback=onOtpVerified`;
-      document.body.appendChild(script);
-    };
+        // Load Products from Supabase
+        async function loadProducts() {
+            productsGrid.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading products...</p>
+                </div>
+            `;
+            
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/products?select=*,categories(category_name)&order=created_at.desc`, {
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`
+                    }
+                });
+                
+                if (!response.ok) throw new Error('Failed to load products');
+                
+                products = await response.json();
+                renderProducts(products);
+            } catch (error) {
+                console.error('Error loading products:', error);
+                productsGrid.innerHTML = `
+                    <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--danger-color);">
+                        <p>Error loading products. Please try again later.</p>
+                        <button onclick="loadProducts()" class="btn btn-primary" style="margin-top: 1rem;">
+                            Retry
+                        </button>
+                    </div>
+                `;
+            }
+        }
 
-    window.onOtpVerified = async (res)=>{
-      if(!res.ok){ showMsg(res.message, true); return; }
-      const email = res.data.email;
-      const emailHash = await sha256Hex(email.toLowerCase());
+        // Render Products
+        function renderProducts(productsToRender) {
+            if (productsToRender.length === 0) {
+                productsGrid.innerHTML = `
+                    <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
+                        <p>No products found in this category.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            productsGrid.innerHTML = '';
+            
+            productsToRender.forEach(product => {
+                const productCard = document.createElement('div');
+                productCard.className = 'product-card';
+                productCard.onclick = () => openProductModal(product.id);
+                
+                productCard.innerHTML = `
+                    <img src="${product.image_url || 'https://via.placeholder.com/300x200?text=No+Image'}" 
+                         alt="${product.product_name}" 
+                         class="product-image"
+                         onerror="this.src='https://via.placeholder.com/300x200?text=Image+Not+Found'">
+                    <div class="product-info">
+                        <h3>${product.product_name}</h3>
+                        <p class="product-company">${product.company}</p>
+                        <p class="product-spec">${product.short_spec || product.specification?.substring(0, 100) || 'No description available'}</p>
+                        <div class="product-price">₹${parseFloat(product.price).toFixed(2)}</div>
+                        <div class="product-actions">
+                            <button class="btn btn-primary" onclick="event.stopPropagation(); addToCart(${product.id})">
+                                Add to Cart
+                            </button>
+                            <button class="btn btn-outline" onclick="event.stopPropagation(); openProductModal(${product.id})">
+                                View Details
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                productsGrid.appendChild(productCard);
+            });
+        }
 
-      // sign in anon if not already
-      if(!auth.currentUser){ await auth.signInAnonymously(); }
-      const uid = auth.currentUser.uid;
+        // Filter products by category
+        function filterByCategory(categoryId) {
+            currentCategory = categoryId;
+            
+            // Update active button
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.category === categoryId.toString()) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            // Update title
+            if (categoryId === 'all') {
+                document.getElementById('categoryTitle').textContent = 'All Products';
+            } else {
+                const category = categories.find(c => c.id == categoryId);
+                document.getElementById('categoryTitle').textContent = category?.category_name || 'Products';
+            }
+            
+            // Filter products
+            let filteredProducts;
+            if (categoryId === 'all') {
+                filteredProducts = products;
+            } else {
+                filteredProducts = products.filter(product => product.category_id == categoryId);
+            }
+            
+            renderProducts(filteredProducts);
+        }
 
-      // link auth to emailHash
-      await db.collection("authLinks").doc(uid).set({ emailHash });
+        // Sort products
+        function sortProducts(sortBy) {
+            let sortedProducts = [...products];
+            
+            switch(sortBy) {
+                case 'price_low':
+                    sortedProducts.sort((a, b) => a.price - b.price);
+                    break;
+                case 'price_high':
+                    sortedProducts.sort((a, b) => b.price - a.price);
+                    break;
+                case 'name':
+                    sortedProducts.sort((a, b) => a.product_name.localeCompare(b.product_name));
+                    break;
+                case 'newest':
+                default:
+                    sortedProducts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                    break;
+            }
+            
+            renderProducts(sortedProducts);
+        }
 
-      // ✅ Immediately claim active session (single device enforcement)
-      await db.collection("profiles").doc(emailHash).set({
-        activeUid: uid,
-        deviceLabel: navigator.platform+" "+navigator.userAgent,
-        email,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge:true });
+        // Open product modal
+        async function openProductModal(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+            
+            // Update modal content
+            document.getElementById('modalTitle').textContent = product.product_name;
+            document.getElementById('modalProductName').textContent = product.product_name;
+            document.getElementById('modalCompany').textContent = product.company;
+            document.getElementById('modalPrice').textContent = `₹${parseFloat(product.price).toFixed(2)}`;
+            document.getElementById('modalImage').src = product.image_url || 'https://via.placeholder.com/400x300?text=No+Image';
+            document.getElementById('modalImage').alt = product.product_name;
+            
+            // Set specifications
+            const specsList = document.getElementById('modalSpecs');
+            specsList.innerHTML = '';
+            
+            if (product.specification) {
+                const specs = product.specification.split('\n').filter(spec => spec.trim());
+                specs.forEach(spec => {
+                    const li = document.createElement('li');
+                    li.textContent = spec;
+                    specsList.appendChild(li);
+                });
+            }
+            
+            // Set additional details
+            const additionalDiv = document.getElementById('modalAdditional');
+            if (product.additional_details) {
+                try {
+                    const details = typeof product.additional_details === 'string' 
+                        ? JSON.parse(product.additional_details)
+                        : product.additional_details;
+                    
+                    let html = '';
+                    for (const [key, value] of Object.entries(details)) {
+                        html += `<p><strong>${key}:</strong> ${Array.isArray(value) ? value.join(', ') : value}</p>`;
+                    }
+                    additionalDiv.innerHTML = html;
+                } catch (e) {
+                    additionalDiv.textContent = product.additional_details || 'No additional details';
+                }
+            } else {
+                additionalDiv.textContent = 'No additional details';
+            }
+            
+            // Load related products
+            await loadRelatedProducts(productId);
+            
+            // Show modal
+            document.getElementById('productModal').style.display = 'block';
+        }
 
-      // Save locally
-      localStorage.setItem("tripapp_emailHash", emailHash);
-      localStorage.setItem("tripapp_logged_in","1");
+        // Load related products
+        async function loadRelatedProducts(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product || !product.category_id) return;
+            
+            const relatedProducts = products.filter(p => 
+                p.id !== productId && 
+                p.category_id === product.category_id &&
+                p.is_available !== false
+            ).slice(0, 4);
+            
+            const relatedGrid = document.getElementById('relatedProducts');
+            relatedGrid.innerHTML = '';
+            
+            if (relatedProducts.length === 0) {
+                relatedGrid.innerHTML = '<p>No related products found.</p>';
+                return;
+            }
+            
+            relatedProducts.forEach(relatedProduct => {
+                const item = document.createElement('div');
+                item.className = 'related-item';
+                item.onclick = () => openProductModal(relatedProduct.id);
+                
+                item.innerHTML = `
+                    <h4>${relatedProduct.product_name}</h4>
+                    <p style="color: var(--gray-color); font-size: 0.9rem;">${relatedProduct.company}</p>
+                    <p style="color: var(--primary-color); font-weight: bold;">₹${parseFloat(relatedProduct.price).toFixed(2)}</p>
+                `;
+                
+                relatedGrid.appendChild(item);
+            });
+        }
 
-      // Prefill profile if exists
-      const profSnap = await db.collection("profiles").doc(emailHash).get();
-      if(profSnap.exists){
-        const p = profSnap.data();
-        nameEl.value = p.name || "";
-        phoneEl.value = p.phone || "";
-      }
+        // Close modal
+        function closeModal() {
+            document.getElementById('productModal').style.display = 'none';
+        }
 
-      stepEmail.classList.add("hidden");
-      stepProfile.classList.remove("hidden");
-      showMsg("OTP verified! Please complete profile.");
-    };
+        // Cart Functions
+        function addToCart(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+            
+            const existingItem = cart.find(item => item.id === productId);
+            
+            if (existingItem) {
+                existingItem.quantity += 1;
+            } else {
+                cart.push({
+                    id: productId,
+                    name: product.product_name,
+                    price: product.price,
+                    image: product.image_url,
+                    company: product.company,
+                    quantity: 1
+                });
+            }
+            
+            updateCart();
+            showNotification('Product added to cart!');
+        }
 
-    // ===== Save Profile =====
-    saveProfileBtn.onclick = async ()=>{
-      const name = nameEl.value.trim();
-      const phone = phoneEl.value.trim();
-      const email = emailEl.value.trim().toLowerCase();
-      if(!name || !phone){ showMsg("Enter name + phone", true); return; }
-      const emailHash = await sha256Hex(email);
+        function addToCartFromModal() {
+            const productName = document.getElementById('modalProductName').textContent;
+            const product = products.find(p => p.product_name === productName);
+            if (product) {
+                addToCart(product.id);
+            }
+        }
 
-      await db.collection("profiles").doc(emailHash).set({ email, name, phone }, { merge:true });
-      showMsg("Profile saved!");
+        function removeFromCart(productId) {
+            cart = cart.filter(item => item.id !== productId);
+            updateCart();
+        }
 
-      // go to trips
-      location.href = "trips.html";
-    };
-  </script>
+        function updateQuantity(productId, change) {
+            const item = cart.find(item => item.id === productId);
+            if (item) {
+                item.quantity += change;
+                if (item.quantity < 1) {
+                    removeFromCart(productId);
+                } else {
+                    updateCart();
+                }
+            }
+        }
+
+        function updateCart() {
+            localStorage.setItem('cart', JSON.stringify(cart));
+            updateCartDisplay();
+        }
+
+        function updateCartDisplay() {
+            // Update cart count
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            cartCount.textContent = totalItems;
+            
+            // Update cart items
+            cartItems.innerHTML = '';
+            
+            if (cart.length === 0) {
+                cartItems.innerHTML = '<div class="loading">Your cart is empty</div>';
+                cartTotal.textContent = '₹0.00';
+                return;
+            }
+            
+            let total = 0;
+            
+            cart.forEach(item => {
+                const itemTotal = item.price * item.quantity;
+                total += itemTotal;
+                
+                const cartItem = document.createElement('div');
+                cartItem.className = 'cart-item';
+                cartItem.innerHTML = `
+                    <img src="${item.image || 'https://via.placeholder.com/80x80?text=No+Image'}" 
+                         alt="${item.name}" 
+                         class="cart-item-image"
+                         onerror="this.src='https://via.placeholder.com/80x80?text=Image'">
+                    <div class="cart-item-details">
+                        <div class="cart-item-title">${item.name}</div>
+                        <div class="cart-item-company" style="color: var(--gray-color); font-size: 0.9rem;">${item.company}</div>
+                        <div class="cart-item-price">₹${parseFloat(item.price).toFixed(2)} × ${item.quantity} = ₹${itemTotal.toFixed(2)}</div>
+                        <div class="cart-quantity">
+                            <button class="quantity-btn" onclick="updateQuantity(${item.id}, -1)">-</button>
+                            <span>${item.quantity}</span>
+                            <button class="quantity-btn" onclick="updateQuantity(${item.id}, 1)">+</button>
+                            <button style="margin-left: auto; color: var(--danger-color); background: none; border: none; cursor: pointer;" 
+                                    onclick="removeFromCart(${item.id})">
+                                Remove
+                            </button>
+                        </div>
+                    </div>
+                `;
+                cartItems.appendChild(cartItem);
+            });
+            
+            cartTotal.textContent = `₹${total.toFixed(2)}`;
+        }
+
+        // Toggle cart sidebar
+        function toggleCart() {
+            document.querySelector('.cart-sidebar').classList.toggle('active');
+        }
+
+        // Buy Now function
+        function buyNow() {
+            const productName = document.getElementById('modalProductName').textContent;
+            const product = products.find(p => p.product_name === productName);
+            
+            if (product) {
+                // Clear cart and add only this product
+                cart = [{
+                    id: product.id,
+                    name: product.product_name,
+                    price: product.price,
+                    image: product.image_url,
+                    company: product.company,
+                    quantity: 1
+                }];
+                updateCart();
+                closeModal();
+                sendWhatsAppEnquiry();
+            }
+        }
+
+        // Send WhatsApp enquiry
+        function sendWhatsAppEnquiry() {
+            if (cart.length === 0) {
+                showNotification('Your cart is empty!', 'error');
+                return;
+            }
+            
+            let message = 'Hello, I would like to enquire about the following products:\n\n';
+            
+            cart.forEach((item, index) => {
+                message += `${index + 1}. ${item.name} (${item.company})\n`;
+                message += `   Quantity: ${item.quantity}\n`;
+                message += `   Price: ₹${(item.price * item.quantity).toFixed(2)}\n\n`;
+            });
+            
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            message += `Total: ₹${total.toFixed(2)}\n\n`;
+            message += 'Please contact me with more details.';
+            
+            // Encode message for URL
+            const encodedMessage = encodeURIComponent(message);
+            const phoneNumber = '9511864107';
+            const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+            
+            // Open WhatsApp
+            window.open(whatsappUrl, '_blank');
+            
+            // Optional: Clear cart after sending
+            // cart = [];
+            // updateCart();
+            // toggleCart();
+            
+            showNotification('Opening WhatsApp...');
+        }
+
+        // Utility function for notifications
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'error' ? 'var(--danger-color)' : 'var(--success-color)'};
+                color: white;
+                padding: 1rem 1.5rem;
+                border-radius: var(--radius);
+                box-shadow: var(--shadow);
+                z-index: 10000;
+                animation: slideIn 0.3s ease;
+            `;
+            
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // Add CSS for animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('productModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        };
+    </script>
 </body>
 </html>
